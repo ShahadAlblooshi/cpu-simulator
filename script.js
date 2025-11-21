@@ -24,6 +24,53 @@ function renderTable() {
     tbody.appendChild(row);
   });
 }
+function loadProgram() {
+  const fileInput = document.getElementById("programFile");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("Please select a file!");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    memory = [];   // Clear memory
+    program = [];  // Clear program
+
+    // Parse your memory file
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line !== "");
+    lines.forEach(line => {
+      const parts = line.split(" ");
+      const addr = parseInt(parts[0], 16);  // first column = memory address (hex)
+      const value = parseInt(parts[1], 16); // second column = value (hex)
+      memory[addr] = value;
+    });
+
+    // Optional demo program (for executing instructions)
+    program = [
+      "LOAD 0",
+      "ADD 1",
+      "ADD 2",
+      "STORE 10"
+    ];
+
+    alert("Memory loaded! Demo program ready.");
+    PC = 0;
+    AC = 0;
+    IR = "";
+    AR = 0;
+    DR = 0;
+    totalCycles = 0;
+    totalInstructions = 0;
+    memoryReads = 0;
+    memoryWrites = 0;
+    renderTable();
+    updateStats();
+  };
+  reader.readAsText(file);
+}
 
 // Update registers & stats
 function updateStats() {
