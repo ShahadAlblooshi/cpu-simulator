@@ -1,18 +1,11 @@
-// Simulator State
-let totalCycles = 0;
-let totalInstructions = 0;
-let memoryReads = 0;
-let memoryWrites = 0;
-
-let PC = 0;  // Program Counter
-let AC = 0;  // Accumulator
-let IR = ""; // Instruction Register
-let AR = 0;  // Address Register
-let DR = 0;  // Data Register
-
+// Simulator state
+let PC = 0, AC = 0, AR = 0, DR = 0, IR = "";
+let totalCycles = 0, totalInstructions = 0, memoryReads = 0, memoryWrites = 0;
+let currentInstructionIndex = 0;
 let memory = [];
 let program = [];
 
+// Instruction definitions
 const instructions = [
   { name: "LOAD", cycles: 2, memRead: 1, memWrite: 0, IR: "0001" },
   { name: "STORE", cycles: 3, memRead: 0, memWrite: 1, IR: "0010" },
@@ -20,88 +13,61 @@ const instructions = [
   { name: "SUB", cycles: 1, memRead: 0, memWrite: 0, IR: "0100" }
 ];
 
-let currentInstructionIndex = 0;
-
-// Render Instructions Table
+// Render instruction table
 function renderTable() {
   const tbody = document.querySelector("#instrTable tbody");
   tbody.innerHTML = "";
-  instructions.forEach((instr, index) => {
+  instructions.forEach((instr, i) => {
     const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${instr.name}</td>
-      <td>${instr.cycles}</td>
-      <td>${instr.memRead}</td>
-      <td>${instr.memWrite}</td>
-    `;
-    if (index === currentInstructionIndex) row.classList.add("current");
+    row.innerHTML = `<td>${instr.name}</td><td>${instr.cycles}</td><td>${instr.memRead}</td><td>${instr.memWrite}</td>`;
+    if (i === currentInstructionIndex) row.classList.add("current");
     tbody.appendChild(row);
   });
 }
 
-// Update stats and registers
+// Update registers & stats
 function updateStats() {
-  document.getElementById("totalCycles").innerText = totalCycles;
-  document.getElementById("totalInstructions").innerText = totalInstructions;
-  document.getElementById("cpi").innerText = totalInstructions === 0 ? 0 : (totalCycles / totalInstructions).toFixed(2);
-  document.getElementById("memoryReads").innerText = memoryReads;
-  document.getElementById("memoryWrites").innerText = memoryWrites;
-
   document.getElementById("PC").innerText = PC;
   document.getElementById("AC").innerText = AC;
-  document.getElementById("IR").innerText = IR || "----";
   document.getElementById("AR").innerText = AR;
   document.getElementById("DR").innerText = DR;
-
-  renderMemory();
+  document.getElementById("IR").innerText = IR;
+  document.getElementById("totalCycles").innerText = totalCycles;
+  document.getElementById("totalInstructions").innerText = totalInstructions;
+  document.getElementById("memoryReads").innerText = memoryReads;
+  document.getElementById("memoryWrites").innerText = memoryWrites;
+  document.getElementById("cpi").innerText = totalInstructions === 0 ? 0 : (totalCycles / totalInstructions).toFixed(2);
 }
 
-// Render Memory Table
-function renderMemory() {
-  const tbody = document.querySelector("#memoryTable tbody");
-  tbody.innerHTML = "";
-  memory.forEach((value, address) => {
-    if (value !== undefined) {
-      const row = document.createElement("tr");
-      row.innerHTML = `<td>${address}</td><td>${value}</td>`;
-      tbody.appendChild(row);
-    }
-  });
-}
-
-// Execute Instruction
+// Execute one instruction
 function executeInstruction() {
-  if (currentInstructionIndex >= program.length) return;
+  if (currentInstructionIndex >= program.length) {
+    alert("Program finished!");
+    return;
+  }
 
-  const line = program[currentInstructionIndex];
+  const line = program[currentInstructionIndex].trim();
+  if (!line) { currentInstructionIndex++; return; }
+
   const parts = line.split(" ");
   const opcode = parts[0].toUpperCase();
-  let instr = instructions.find(i => i.name === opcode);
-  if (!instr) return;
+  const operand = parseInt(parts[1]) || 0;
+
+  const instr = instructions.find(i => i.name === opcode);
+  if (!instr) { alert("Unknown instruction: " + opcode); currentInstructionIndex++; return; }
 
   IR = instr.IR;
   totalCycles += instr.cycles;
-  totalInstructions += 1;
+  totalInstructions++;
   memoryReads += instr.memRead;
   memoryWrites += instr.memWrite;
-
-  AR = parseInt(parts[1]) || 0;
+  AR = operand;
 
   switch(opcode) {
-    case "LOAD":
-      DR = memory[AR] || 0;
-      AC = DR;
-      break;
-    case "STORE":
-      DR = AC;
-      memory[AR] = DR;
-      break;
-    case "ADD":
-      AC += parseInt(parts[1]) || 0;
-      break;
-    case "SUB":
-      AC -= parseInt(parts[1]) || 0;
-      break;
+    case "LOAD": DR = memory[AR] || 0; AC = DR; break;
+    case "STORE": DR = AC; memory[AR] = DR; break;
+    case "ADD": AC += operand; break;
+    case "SUB": AC -= operand; break;
   }
 
   PC++;
@@ -110,31 +76,43 @@ function executeInstruction() {
   updateStats();
 }
 
-// Load program from file
+// Event listeners
+document.getElementById("nextInstruction").addEventListener("click", executeInstruction);
+
+document.getElementById("runProgram").addEventListener("click", () => {
+  const interval = setInterval(() => {
+    executeInstruction();
+    if (currentInstructionIndex >= program.length) clearInterval(interval);
+  }, 300);
+});
+
+document.getElementById("resetProgram").addEventListener("click", () => {
+  PC = AC = AR = DR = 0; IR = "";
+  totalCycles = totalInstructions = memoryReads = memoryWrites = 0;
+  currentInstructionIndex = 0;
+  memory = [];
+  renderTable();
+  updateStats();
+});
+
 document.getElementById("loadProgram").addEventListener("click", () => {
   const fileInput = document.getElementById("programFile");
   const file = fileInput.files[0];
-  if (!file) return alert("Select a program file!");
+  if (!file) { alert("Select a program file first!"); return; }
+
   const reader = new FileReader();
   reader.onload = e => {
-    program = e.target.result.split("\n").map(l => l.trim()).filter(l => l);
+    program = e.target.result.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    PC = AC = AR = DR = 0; IR = "";
+    totalCycles = totalInstructions = memoryReads = memoryWrites = 0;
     currentInstructionIndex = 0;
-    PC = 0;
+    memory = [];
+    renderTable();
     updateStats();
-    alert("Program loaded!");
+    alert("Program loaded! Ready to run.");
+    console.log("Program:", program);
   };
   reader.readAsText(file);
-});
-
-// Next instruction button
-document.getElementById("nextInstruction").addEventListener("click", executeInstruction);
-
-// Run program
-document.getElementById("run").addEventListener("click", () => {
-  const interval = setInterval(() => {
-    if (currentInstructionIndex >= program.length) clearInterval(interval);
-    else executeInstruction();
-  }, 300);
 });
 
 // Initial render
