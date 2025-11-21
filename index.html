@@ -1,39 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>CPU Simulator</title>
-  <style>
-    #registers, #stats { margin-bottom: 20px; }
-    span { font-weight: bold; }
-  </style>
+<meta charset="UTF-8">
+<title>Enhanced CPU Simulator</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f0f4f8; color: #333; }
+  h2, h3 { color: #004080; }
+  #dashboard, #registers, #memory { margin-bottom: 20px; padding: 10px; border-radius: 10px; background: #ffffff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+  #dashboard p, #registers p { margin: 5px 0; font-size: 16px; }
+  span { font-weight: bold; color: #004080; }
+  #controls { margin-bottom: 20px; }
+  button { margin-right: 10px; padding: 5px 15px; border-radius: 5px; border: none; background: #004080; color: white; cursor: pointer; transition: 0.2s; }
+  button:hover { background: #0066cc; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+  th { background: #004080; color: white; }
+  .current { background: #ffeb3b; font-weight: bold; }
+</style>
 </head>
 <body>
-  <h2>CPU Simulator</h2>
 
-  <div id="stats">
-    <p>Total Cycles: <span id="totalCycles">0</span></p>
-    <p>Instructions Executed: <span id="totalInstructions">0</span></p>
-    <p>CPI: <span id="cpi">0</span></p>
-    <p>Memory Reads: <span id="memoryReads">0</span></p>
-    <p>Memory Writes: <span id="memoryWrites">0</span></p>
-  </div>
+<h2>Enhanced CPU Simulator</h2>
 
-  <div id="registers">
-    <h3>Registers</h3>
-    <p>PC: <span id="PC">0</span></p>
-    <p>AC: <span id="AC">0</span></p>
-    <p>IR: <span id="IR"></span></p>
-    <p>AR: <span id="AR">0</span></p>
-    <p>DR: <span id="DR">0</span></p>
-  </div>
+<div id="dashboard">
+  <h3>Statistics</h3>
+  <p>Total Cycles: <span id="totalCycles">0</span></p>
+  <p>Instructions Executed: <span id="totalInstructions">0</span></p>
+  <p>CPI: <span id="cpi">0</span></p>
+  <p>Memory Reads: <span id="memoryReads">0</span></p>
+  <p>Memory Writes: <span id="memoryWrites">0</span></p>
+</div>
 
-  <div id="controls">
-    <input type="file" id="programFile" />
-    <button onclick="loadProgram()">Load Program</button>
-    <button id="nextInstruction">Next Instruction</button>
-    <button id="run">Run Program</button>
-  </div>
+<div id="registers">
+  <h3>Registers</h3>
+  <p>PC: <span id="PC">0</span></p>
+  <p>AC: <span id="AC">0</span></p>
+  <p>IR: <span id="IR">---</span></p>
+  <p>AR: <span id="AR">0</span></p>
+  <p>DR: <span id="DR">0</span></p>
+</div>
 
-  <script src="simulator.js"></script>
+<div id="controls">
+  <input type="file" id="programFile" />
+  <button onclick="loadProgram()">Load Program</button>
+  <button id="nextInstruction">Next Instruction</button>
+  <button id="runProgram">Run Program</button>
+</div>
+
+<div id="memory">
+  <h3>Memory Table</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Address</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody id="memoryBody"></tbody>
+  </table>
+</div>
+
+<script src="simulator.js"></script>
 </body>
 </html>
