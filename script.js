@@ -1,20 +1,32 @@
+// ========================
 // Simulator state
+// ========================
 let totalCycles = 0;
 let totalInstructions = 0;
 let memoryReads = 0;
 let memoryWrites = 0;
+let PC = 0;   // Program Counter
+let AC = 0;   // Accumulator
+let IR = "";  // Instruction Register
+let AR = 0;   // Address Register
+let DR = 0;   // Data Register
+let memory = [];  // Simulated memory
+let program = [];  // Loaded program
+let currentInstructionIndex = 0;
 
-// Define instructions
+// ========================
+// Define instructions with cycle/memory info
+// ========================
 const instructions = [
   { name: "LOAD", cycles: 2, memRead: 1, memWrite: 0 },
   { name: "STORE", cycles: 3, memRead: 0, memWrite: 1 },
-  { name: "ADD", cycles: 1, memRead: 0, memWrite: 0 },
-  { name: "SUB", cycles: 1, memRead: 0, memWrite: 0 }
+  { name: "ADD", cycles: 1, memRead: 1, memWrite: 0 },
+  { name: "SUB", cycles: 1, memRead: 1, memWrite: 0 }
 ];
 
-let currentInstructionIndex = 0;
-
+// ========================
 // Populate table initially
+// ========================
 function renderTable() {
   const tbody = document.querySelector("#instrTable tbody");
   tbody.innerHTML = "";
@@ -31,29 +43,86 @@ function renderTable() {
   });
 }
 
+// ========================
 // Update dashboard stats
+// ========================
 function updateStats() {
   document.getElementById("totalCycles").innerText = totalCycles;
   document.getElementById("totalInstructions").innerText = totalInstructions;
   document.getElementById("cpi").innerText = totalInstructions === 0 ? 0 : (totalCycles / totalInstructions).toFixed(2);
   document.getElementById("memoryReads").innerText = memoryReads;
   document.getElementById("memoryWrites").innerText = memoryWrites;
+
+  // Optional: display registers
+  document.getElementById("PC").innerText = PC;
+  document.getElementById("AC").innerText = AC;
+  document.getElementById("IR").innerText = IR;
+  document.getElementById("AR").innerText = AR;
+  document.getElementById("DR").innerText = DR;
 }
 
+// ========================
 // Execute a single instruction
+// ========================
 function executeInstruction() {
-  const instr = instructions[currentInstructionIndex];
-  totalCycles += instr.cycles;
-  totalInstructions += 1;
-  memoryReads += instr.memRead;
-  memoryWrites += instr.memWrite;
+  if (program.length === 0) {
+    alert("No program loaded!");
+    return;
+  }
 
-  currentInstructionIndex = (currentInstructionIndex + 1) % instructions.length;
+  if (PC >= program.length) {
+    alert("Program finished!");
+    return;
+  }
+
+  IR = program[PC];  // fetch instruction
+  totalInstructions++;
+
+  const parts = IR.split(" ");
+  const opcode = parts[0].toUpperCase();
+  const operand = parseInt(parts[1] || 0);
+
+  switch(opcode) {
+    case "LOAD":
+      AR = operand;
+      DR = memory[AR] || 0;
+      AC = DR;
+      totalCycles += 2;
+      memoryReads += 1;
+      break;
+    case "STORE":
+      AR = operand;
+      memory[AR] = AC;
+      totalCycles += 3;
+      memoryWrites += 1;
+      break;
+    case "ADD":
+      AR = operand;
+      DR = memory[AR] || 0;
+      AC += DR;
+      totalCycles += 1;
+      memoryReads += 1;
+      break;
+    case "SUB":
+      AR = operand;
+      DR = memory[AR] || 0;
+      AC -= DR;
+      totalCycles += 1;
+      memoryReads += 1;
+      break;
+    default:
+      console.log("Unknown instruction:", IR);
+  }
+
+  PC++;
+  currentInstructionIndex = instructions.findIndex(instr => instr.name === opcode);
   renderTable();
   updateStats();
 }
 
-// Event listeners
+// ========================
+// Event listeners for buttons
+// ========================
 document.getElementById("nextInstruction").addEventListener("click", executeInstruction);
 
 document.getElementById("fastInstruction").addEventListener("click", () => {
@@ -73,12 +142,13 @@ document.getElementById("fastCycle").addEventListener("click", () => {
 document.getElementById("run").addEventListener("click", () => {
   const interval = setInterval(() => {
     executeInstruction();
-    if (totalInstructions >= 50) clearInterval(interval);
+    if (PC >= program.length) clearInterval(interval);
   }, 200);
 });
 
-let program = [];
-
+// ========================
+// Load program from file
+// ========================
 function loadProgram() {
   const fileInput = document.getElementById("programFile");
   const file = fileInput.files[0];
@@ -92,15 +162,23 @@ function loadProgram() {
   
   reader.onload = function(e) {
     const text = e.target.result;
-    // Assuming each line is one instruction
     program = text.split("\n").map(line => line.trim()).filter(line => line !== "");
+    PC = 0;
+    totalCycles = 0;
+    totalInstructions = 0;
+    memoryReads = 0;
+    memoryWrites = 0;
+    AC = 0; IR = ""; AR = 0; DR = 0;
     console.log("Program loaded:", program);
     alert("Program loaded successfully!");
+    updateStats();
   };
   
   reader.readAsText(file);
 }
 
+// ========================
 // Initial render
+// ========================
 renderTable();
 updateStats();
