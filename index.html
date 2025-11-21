@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPU Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>CPU Instruction Simulator</h1>
+
+  <div class="controls">
+    <button id="nextInstruction">Next Instruction</button>
+    <button id="fastInstruction">Run 20 Instructions Fast</button>
+    <button id="nextCycle">Next Cycle</button>
+    <button id="fastCycle">Run 10 Cycles Fast</button>
+    <button id="run">Run 50 Instructions</button>
+  </div>
+
+  <div class="stats">
+    <h2>Statistics</h2>
+    <p>Total Cycles Executed: <span id="totalCycles">0</span></p>
+    <p>Number of Instructions Executed: <span id="totalInstructions">0</span></p>
+    <p>Average Cycles per Instruction (CPI): <span id="cpi">0</span></p>
+    <p>Memory Reads: <span id="memoryReads">0</span></p>
+    <p>Memory Writes: <span id="memoryWrites">0</span></p>
+  </div>
+
+  <div class="instruction-table">
+    <h2>Instruction Queue</h2>
+    <table id="instrTable">
+      <thead>
+        <tr>
+          <th>Instruction</th>
+          <th>Cycles</th>
+          <th>Memory Read</th>
+          <th>Memory Write</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
