@@ -1,53 +1,86 @@
 body {
-  font-family: Arial, sans-serif;
-  margin: 20px;
-  background-color: #f0f0f0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f4f4f9;
+  color: #333;
+  margin: 0;
+  padding: 20px;
 }
 
 h1 {
   text-align: center;
+  color: #2c3e50;
 }
 
-.controls {
-  text-align: center;
+.dashboard {
+  display: flex;
+  justify-content: space-around;
   margin-bottom: 20px;
+  gap: 20px;
 }
 
-button {
-  margin: 5px;
-  padding: 10px 20px;
-  font-size: 16px;
-}
-
-.stats {
-  background: white;
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   padding: 15px;
-  border-radius: 10px;
-  max-width: 400px;
-  margin: auto;
-  margin-bottom: 20px;
+  flex: 1;
 }
 
-.instruction-table {
-  max-width: 600px;
-  margin: auto;
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
+.panel h2 {
+  color: #2980b9;
+  margin-bottom: 10px;
 }
 
-table {
+.registers p, .stats p {
+  font-size: 1.1em;
+  margin: 5px 0;
+}
+
+.memory table, .instructions table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
 }
 
-th, td {
-  border: 1px solid #ccc;
+.memory th, .memory td, .instructions th, .instructions td {
+  border: 1px solid #ddd;
   padding: 8px;
   text-align: center;
 }
 
-tr.current {
-  background-color: #ffff99; /* Highlight current instruction */
+.memory tr:nth-child(even), .instructions tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.memory tr:hover, .instructions tr:hover {
+  background-color: #d6eaf8;
+}
+
+.instructions .current {
+  background-color: #fcf3cf !important;
+  font-weight: bold;
+}
+
+.controls {
+  text-align: center;
+  margin-top: 20px;
+}
+
+button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  margin: 5px;
+  border-radius: 8px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+button:hover {
+  background-color: #2980b9;
+}
+
+input[type=file] {
+  margin: 5px;
 }
