@@ -1,100 +1,122 @@
 // Simulator state
-let totalCycles = 0;
-let totalInstructions = 0;
-let memoryReads = 0;
-let memoryWrites = 0;
-
-let PC = 0;   // Program Counter
-let AC = 0;   // Accumulator
-let IR = "";  // Instruction Register
-let AR = 0;   // Address Register
-let DR = 0;   // Data Register
+let PC = 0, AC = 0, DR = 0, AR = 0, IR = "";
+let totalCycles = 0, totalInstructions = 0, memoryReads = 0, memoryWrites = 0;
+let program = [];
 let memory = [];
 
-let program = [];
+// Instruction set with IR mapping
+const instructionSet = {
+  "LOAD": { cycles: 2, memRead: 1, memWrite: 0, IRcode: "0001" },
+  "STORE": { cycles: 3, memRead: 0, memWrite: 1, IRcode: "0010" },
+  "ADD": { cycles: 1, memRead: 0, memWrite: 0, IRcode: "0011" },
+  "SUB": { cycles: 1, memRead: 0, memWrite: 0, IRcode: "0100" }
+};
 
-// Update dashboard and registers
-function updateStats() {
+// Update registers and stats
+function updateDashboard() {
+  document.getElementById("PC").innerText = PC;
+  document.getElementById("AC").innerText = AC;
+  document.getElementById("IR").innerText = IR || "---";
+  document.getElementById("AR").innerText = AR;
+  document.getElementById("DR").innerText = DR;
+
   document.getElementById("totalCycles").innerText = totalCycles;
   document.getElementById("totalInstructions").innerText = totalInstructions;
   document.getElementById("cpi").innerText = totalInstructions === 0 ? 0 : (totalCycles / totalInstructions).toFixed(2);
   document.getElementById("memoryReads").innerText = memoryReads;
   document.getElementById("memoryWrites").innerText = memoryWrites;
 
-  document.getElementById("PC").innerText = PC;
-  document.getElementById("AC").innerText = AC;
-  document.getElementById("IR").innerText = IR;
-  document.getElementById("AR").innerText = AR;
-  document.getElementById("DR").innerText = DR;
+  renderMemory();
+}
+
+// Render memory table
+function renderMemory() {
+  const tbody = document.getElementById("memoryBody");
+  tbody.innerHTML = "";
+  for(let addr=0; addr<memory.length; addr++) {
+    if(memory[addr] !== undefined){
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${addr}</td><td>${memory[addr]}</td>`;
+      tbody.appendChild(row);
+    }
+  }
 }
 
 // Execute a single instruction
 function executeInstruction() {
-  if (!program.length || PC >= program.length) return;
+  if(PC >= program.length) return;
 
-  IR = program[PC];
-  const parts = IR.split(" ");
-  const opcode = parts[0];
-  const operand = parseInt(parts[1]);
+  let line = program[PC];
+  let [opcode, operand] = line.split(" ");
+  operand = parseInt(operand);
 
-  AR = operand;
+  if(!instructionSet[opcode]) {
+    alert(`Unknown instruction at line ${PC}: ${line}`);
+    PC++;
+    return;
+  }
+
+  const instr = instructionSet[opcode];
+  IR = instr.IRcode;
+  AR = operand || 0;
 
   switch(opcode) {
     case "LOAD":
       AC = memory[AR] || 0;
-      totalCycles += 2;
-      memoryReads += 1;
+      DR = AC;
+      totalCycles += instr.cycles;
+      memoryReads += instr.memRead;
       break;
     case "STORE":
       memory[AR] = AC;
-      totalCycles += 3;
-      memoryWrites += 1;
+      DR = AC;
+      totalCycles += instr.cycles;
+      memoryWrites += instr.memWrite;
       break;
     case "ADD":
       AC += operand;
-      totalCycles += 1;
+      DR = AC;
+      totalCycles += instr.cycles;
       break;
     case "SUB":
       AC -= operand;
-      totalCycles += 1;
+      DR = AC;
+      totalCycles += instr.cycles;
       break;
   }
 
-  DR = AC;
   totalInstructions++;
   PC++;
-
-  updateStats();
+  updateDashboard();
 }
 
 // Load program from file
 function loadProgram() {
   const fileInput = document.getElementById("programFile");
   const file = fileInput.files[0];
-  
-  if (!file) { alert("Select a file!"); return; }
+  if(!file) { alert("Select a program file!"); return; }
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    program = e.target.result.split("\n").map(line => line.trim()).filter(line => line);
-    PC = 0; AC = 0; IR = ""; AR = 0; DR = 0;
-    memory = [];
+    program = e.target.result.split("\n").map(line => line.trim()).filter(line=>line);
+    PC = 0; AC = 0; DR = 0; AR = 0; IR = "";
     totalCycles = 0; totalInstructions = 0; memoryReads = 0; memoryWrites = 0;
-    updateStats();
-    alert("Program loaded!");
-  };
+    memory = [];
+    updateDashboard();
+    alert("Program loaded successfully!");
+  }
   reader.readAsText(file);
 }
 
 // Event listeners
 document.getElementById("nextInstruction").addEventListener("click", executeInstruction);
 
-document.getElementById("run").addEventListener("click", () => {
+document.getElementById("runProgram").addEventListener("click", () => {
   const interval = setInterval(() => {
+    if(PC >= program.length) { clearInterval(interval); return; }
     executeInstruction();
-    if (PC >= program.length) clearInterval(interval);
-  }, 200);
+  }, 300);
 });
 
-// Initial update
-updateStats();
+// Initial render
+updateDashboard();
