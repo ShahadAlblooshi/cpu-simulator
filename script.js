@@ -1,137 +1,88 @@
-// CPU Simulator State
-let PC = 0;
-let AC = 0;
-let IR = "";
-let AR = 0;
-let DR = 0;
-let memory = [];
-let totalCycles = 0;
-let totalInstructions = 0;
-let memoryReads = 0;
-let memoryWrites = 0;
-let program = [];
-let running = false;
+let memory = {};
+let PC = 0, AC = 0, AR = 0, DR = 0, IR = "";
+let cycles = 0, executed = 0, memReads = 0, memWrites = 0;
 
-// Custom Opcode Table
-const instructionSet = {
-  "7800": { name: "CLA", cycles: 1, memRead: 0, memWrite: 0 },
-  "7400": { name: "CLE", cycles: 1, memRead: 0, memWrite: 0 },
-  "7200": { name: "CMA", cycles: 1, memRead: 0, memWrite: 0 },
-  "7100": { name: "CME", cycles: 1, memRead: 0, memWrite: 0 },
-  "7080": { name: "CIR", cycles: 1, memRead: 0, memWrite: 0 },
-  "7040": { name: "CIL", cycles: 1, memRead: 0, memWrite: 0 },
-  "7020": { name: "INC", cycles: 1, memRead: 0, memWrite: 0 },
-  "7010": { name: "SPA", cycles: 1, memRead: 0, memWrite: 0 },
-  "7008": { name: "SNA", cycles: 1, memRead: 0, memWrite: 0 },
-  "7004": { name: "SZA", cycles: 1, memRead: 0, memWrite: 0 },
-  "7002": { name: "SZE", cycles: 1, memRead: 0, memWrite: 0 },
-  "7001": { name: "HLT", cycles: 1, memRead: 0, memWrite: 0 }
+const instrSet = {
+  "7800": { name: "CLA", cycles: 1 },
+  "7400": { name: "CLE", cycles: 1 },
+  "7200": { name: "CMA", cycles: 1 },
+  "7100": { name: "CME", cycles: 1 },
+  "7080": { name: "CIR", cycles: 1 },
+  "7040": { name: "CIL", cycles: 1 },
+  "7020": { name: "INC", cycles: 1 },
+  "7010": { name: "SPA", cycles: 1 },
+  "7008": { name: "SNA", cycles: 1 },
+  "7004": { name: "SZA", cycles: 1 },
+  "7002": { name: "SZE", cycles: 1 },
+  "7001": { name: "HLT", cycles: 1 }
 };
 
-// Load Program
+function updateUI() {
+  document.getElementById("PC").textContent = PC;
+  document.getElementById("AC").textContent = AC;
+  document.getElementById("AR").textContent = AR;
+  document.getElementById("DR").textContent = DR;
+  document.getElementById("IR").textContent = IR;
+
+  document.getElementById("totalCycles").textContent = cycles;
+  document.getElementById("totalInstructions").textContent = executed;
+  document.getElementById("cpi").textContent = (executed ? (cycles / executed).toFixed(2) : 0);
+  document.getElementById("memoryReads").textContent = memReads;
+  document.getElementById("memoryWrites").textContent = memWrites;
+}
+
 document.getElementById("loadProgram").addEventListener("click", () => {
-  const fileInput = document.getElementById("programFile");
-  const file = fileInput.files[0];
-  if (!file) { alert("Please select a program file!"); return; }
+  const file = document.getElementById("programFile").files[0];
+  if (!file) {
+    alert("Please select a program .txt file first.");
+    return;
+  }
 
   const reader = new FileReader();
-  reader.onload = (e) => {
-    const lines = e.target.result.split("\n").map(l => l.trim()).filter(l => l !== "");
-    program = lines.map(l => l.split(" ")[1].toUpperCase());
-    memory = [...program];
-    PC = AC = AR = DR = 0;
-    IR = "";
-    totalCycles = totalInstructions = memoryReads = memoryWrites = 0;
-    running = false;
-    updateRegisters();
-    updateStats();
-    renderTable();
-    alert("Program loaded!");
+  reader.onload = function() {
+    const lines = reader.result.split("\n");
+
+    memory = {};
+    lines.forEach(line => {
+      if (line.trim().length === 0) return;
+
+      const parts = line.split(/\s+/);
+      if (parts.length >= 2) {
+        const addr = parseInt(parts[0], 16);
+        const value = parts[1].trim();
+        memory[addr] = value;
+      }
+    });
+
+    PC = 0;
+    updateUI();
+    alert("Program loaded successfully!");
   };
+
   reader.readAsText(file);
 });
 
-// Update Registers Display
-function updateRegisters() {
-  document.getElementById("PC").innerText = PC;
-  document.getElementById("AC").innerText = AC;
-  document.getElementById("IR").innerText = IR;
-  document.getElementById("AR").innerText = AR;
-  document.getElementById("DR").innerText = DR;
-}
+document.getElementById("nextInstruction").addEventListener("click", () => {
+  const instr = memory[PC];
+  if (!instr) {
+    IR = "----";
+    updateUI();
+    return;
+  }
 
-// Update Stats
-function updateStats() {
-  document.getElementById("totalCycles").innerText = totalCycles;
-  document.getElementById("totalInstructions").innerText = totalInstructions;
-  document.getElementById("cpi").innerText = totalInstructions === 0 ? 0 : (totalCycles/totalInstructions).toFixed(2);
-  document.getElementById("memoryReads").innerText = memoryReads;
-  document.getElementById("memoryWrites").innerText = memoryWrites;
-}
-
-// Render Instruction Table
-function renderTable() {
-  const tbody = document.querySelector("#instrTable tbody");
-  tbody.innerHTML = "";
-  memory.forEach((code, index) => {
-    const instr = instructionSet[code] ? instructionSet[code].name : "???";
-    const cycles = instructionSet[code] ? instructionSet[code].cycles : 0;
-    const row = document.createElement("tr");
-    row.innerHTML = `<td>${instr}</td><td>${code}</td><td>${cycles}</td>`;
-    if (index === PC) row.classList.add("current");
-    tbody.appendChild(row);
-  });
-}
-
-// Execute Next Instruction
-function executeInstruction() {
-  if (!program.length || PC >= program.length) { running = false; return; }
-
-  IR = memory[PC];
-  AR = PC;
-  DR = memory[PC];
-  const instr = instructionSet[IR];
-
-  if (!instr) { alert(`Unknown instruction at ${PC}: ${IR}`); running = false; return; }
-
-  // Update stats
-  totalCycles += instr.cycles;
-  totalInstructions++;
-  memoryReads += instr.memRead;
-  memoryWrites += instr.memWrite;
-
-  // Special HLT instruction
-  if (IR === "7001") { running = false; alert("Program Halted!"); }
+  IR = instr;
+  executed++;
+  cycles += instrSet[instr]?.cycles || 1;
 
   PC++;
-  updateRegisters();
-  updateStats();
-  renderTable();
-}
-
-// Run Program
-let runInterval;
-document.getElementById("runProgram").addEventListener("click", () => {
-  if (running) return;
-  running = true;
-  runInterval = setInterval(() => {
-    if (!running || PC >= program.length) { clearInterval(runInterval); running=false; return; }
-    executeInstruction();
-  }, 400);
+  updateUI();
 });
 
-// Next Instruction
-document.getElementById("nextInstruction").addEventListener("click", () => {
-  executeInstruction();
-});
-
-// Reset
 document.getElementById("resetProgram").addEventListener("click", () => {
   PC = AC = AR = DR = 0;
-  IR = "";
-  totalCycles = totalInstructions = memoryReads = memoryWrites = 0;
-  running = false;
-  updateRegisters();
-  updateStats();
-  renderTable();
+  IR = "----";
+  cycles = executed = memReads = memWrites = 0;
+
+  updateUI();
+  alert("Simulator reset!");
 });
