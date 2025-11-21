@@ -53,13 +53,14 @@ function updateStats() {
   document.getElementById("memoryReads").innerText = memoryReads;
   document.getElementById("memoryWrites").innerText = memoryWrites;
 
-  // Optional: display registers
+  // Update registers
   document.getElementById("PC").innerText = PC;
   document.getElementById("AC").innerText = AC;
   document.getElementById("IR").innerText = IR;
   document.getElementById("AR").innerText = AR;
   document.getElementById("DR").innerText = DR;
 }
+
 
 // ========================
 // Execute a single instruction
@@ -111,7 +112,22 @@ function executeInstruction() {
       memoryReads += 1;
       break;
     default:
-      console.log("Unknown instruction:", IR);
+      console.log("Unknown instruction:", IR);  IR = instructions[currentInstructionIndex].name;
+  PC = currentInstructionIndex;   // update PC
+  AR = Math.floor(Math.random() * 10); // just example
+  DR = AC;                        // example
+  AC += 1;                         // example increment
+
+  totalCycles += instructions[currentInstructionIndex].cycles;
+  totalInstructions += 1;
+  memoryReads += instructions[currentInstructionIndex].memRead;
+  memoryWrites += instructions[currentInstructionIndex].memWrite;
+
+  currentInstructionIndex = (currentInstructionIndex + 1) % instructions.length;
+  renderTable();
+  updateStats();
+
+  
   }
 
   PC++;
