@@ -7,53 +7,51 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
+  <div class="container">
     <h1>CPU Simulator</h1>
-    <p>Learn how a CPU executes instructions step by step!</p>
-  </header>
 
-  <section class="dashboard">
-    <h2>Statistics</h2>
-    <div class="stats">
-      <div>Total Cycles: <span id="totalCycles">0</span></div>
-      <div>Instructions Executed: <span id="totalInstructions">0</span></div>
-      <div>CPI: <span id="cpi">0</span></div>
-      <div>Memory Reads: <span id="memoryReads">0</span></div>
-      <div>Memory Writes: <span id="memoryWrites">0</span></div>
+    <div class="controls">
+      <input type="file" id="programFile" accept=".txt">
+      <button id="loadProgram">Load Program</button>
+      <button id="nextInstruction">Next Instruction</button>
+      <button id="runProgram">Run Program</button>
+      <button id="resetProgram">Reset</button>
     </div>
-  </section>
 
-  <section class="registers">
-    <h2>Registers</h2>
-    <div>PC: <span id="PC">0</span></div>
-    <div>AC: <span id="AC">0</span></div>
-    <div>IR: <span id="IR">N/A</span></div>
-    <div>AR: <span id="AR">0</span></div>
-    <div>DR: <span id="DR">0</span></div>
-  </section>
+    <div class="dashboard">
+      <h2>Registers</h2>
+      <div class="registers">
+        <div>PC: <span id="PC">0</span></div>
+        <div>AC: <span id="AC">0</span></div>
+        <div>IR: <span id="IR">----</span></div>
+        <div>AR: <span id="AR">0</span></div>
+        <div>DR: <span id="DR">0</span></div>
+      </div>
 
-  <section class="controls">
-    <input type="file" id="programFile">
-    <button onclick="loadProgram()">Load Program</button>
-    <button id="nextInstruction">Next Instruction</button>
-    <button id="run">Run Program</button>
-  </section>
+      <h2>Stats</h2>
+      <div class="stats">
+        <div>Total Cycles: <span id="totalCycles">0</span></div>
+        <div>Instructions Executed: <span id="totalInstructions">0</span></div>
+        <div>CPI: <span id="cpi">0</span></div>
+        <div>Memory Reads: <span id="memoryReads">0</span></div>
+        <div>Memory Writes: <span id="memoryWrites">0</span></div>
+      </div>
+    </div>
 
-  <section class="instruction-table">
     <h2>Instruction Table</h2>
     <table id="instrTable">
       <thead>
         <tr>
           <th>Instruction</th>
+          <th>IR Value</th>
           <th>Cycles</th>
-          <th>Memory Reads</th>
-          <th>Memory Writes</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
-  </section>
 
-  <script src="simulator.js"></script>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
