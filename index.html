@@ -1,54 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CPU Simulator</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-<style>
-  body { font-family: 'Roboto', sans-serif; background: #1e1e2f; color: #eee; margin: 0; padding: 0; }
-  header { text-align: center; padding: 20px; background: #282a36; color: #f8f8f2; font-size: 2em; font-weight: bold; }
-  .container { display: flex; flex-wrap: wrap; justify-content: space-around; padding: 20px; }
-  .panel { background: #44475a; border-radius: 12px; padding: 20px; margin: 10px; flex: 1 1 300px; min-width: 280px; }
-  h2 { margin-top: 0; color: #50fa7b; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th, td { border: 1px solid #6272a4; padding: 8px; text-align: center; }
-  th { background: #6272a4; }
-  tr.current { background: #ffb86c; color: #000; font-weight: bold; }
-  .registers div { margin: 5px 0; }
-  button { margin: 5px; padding: 10px 15px; border: none; border-radius: 8px; background: #50fa7b; color: #000; font-weight: bold; cursor: pointer; }
-  button:hover { background: #8be9fd; }
-  input[type="file"] { margin-top: 10px; }
-  .stats div { margin: 5px 0; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPU Simulator</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <header>
+    <h1>CPU Simulator</h1>
+    <p>Learn how a CPU executes instructions step by step!</p>
+  </header>
 
-<header>CPU Simulator</header>
-
-<div class="container">
-
-  <div class="panel">
-    <h2>Program Controls</h2>
-    <input type="file" id="programFile" accept=".txt"><br>
-    <button id="loadProgram">Load Program</button>
-    <button id="nextInstruction">Next Instruction</button>
-    <button id="runProgram">Run Program</button>
-    <button id="resetProgram">Reset</button>
-  </div>
-
-  <div class="panel">
-    <h2>Registers</h2>
-    <div class="registers">
-      <div>PC: <span id="PC">0</span></div>
-      <div>AC: <span id="AC">0</span></div>
-      <div>IR: <span id="IR"></span></div>
-      <div>AR: <span id="AR">0</span></div>
-      <div>DR: <span id="DR">0</span></div>
-    </div>
-  </div>
-
-  <div class="panel">
+  <section class="dashboard">
     <h2>Statistics</h2>
     <div class="stats">
       <div>Total Cycles: <span id="totalCycles">0</span></div>
@@ -57,25 +21,39 @@
       <div>Memory Reads: <span id="memoryReads">0</span></div>
       <div>Memory Writes: <span id="memoryWrites">0</span></div>
     </div>
-  </div>
+  </section>
 
-  <div class="panel">
+  <section class="registers">
+    <h2>Registers</h2>
+    <div>PC: <span id="PC">0</span></div>
+    <div>AC: <span id="AC">0</span></div>
+    <div>IR: <span id="IR">N/A</span></div>
+    <div>AR: <span id="AR">0</span></div>
+    <div>DR: <span id="DR">0</span></div>
+  </section>
+
+  <section class="controls">
+    <input type="file" id="programFile">
+    <button onclick="loadProgram()">Load Program</button>
+    <button id="nextInstruction">Next Instruction</button>
+    <button id="run">Run Program</button>
+  </section>
+
+  <section class="instruction-table">
     <h2>Instruction Table</h2>
     <table id="instrTable">
       <thead>
         <tr>
           <th>Instruction</th>
           <th>Cycles</th>
-          <th>Memory Read</th>
-          <th>Memory Write</th>
+          <th>Memory Reads</th>
+          <th>Memory Writes</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
-  </div>
+  </section>
 
-</div>
-
-<script src="simulator.js"></script>
+  <script src="simulator.js"></script>
 </body>
 </html>
