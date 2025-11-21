@@ -1,69 +1,89 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(to right, #1f4037, #99f2c8);
-  color: #fff;
+  background: linear-gradient(to right, #83a4d4, #b6fbff);
+  color: #222;
   margin: 0;
   padding: 0;
 }
 
-header {
-  text-align: center;
-  padding: 2rem;
-  background-color: rgba(0,0,0,0.3);
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
 }
 
 h1 {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
-}
-
-.dashboard, .registers, .controls, .instruction-table {
-  margin: 2rem auto;
-  max-width: 800px;
-  background-color: rgba(0,0,0,0.4);
-  padding: 1rem 2rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 15px rgba(0,0,0,0.5);
-}
-
-.stats div, .registers div {
-  margin: 0.5rem 0;
-  font-size: 1.2rem;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #0d3b66;
 }
 
 .controls {
   display: flex;
-  gap: 1rem;
   justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .controls button {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  padding: 10px 15px;
   border: none;
   border-radius: 8px;
-  background-color: #ff8c00;
+  background-color: #0d3b66;
+  color: white;
   cursor: pointer;
+  font-weight: bold;
   transition: 0.3s;
 }
 
 .controls button:hover {
-  background-color: #ffa500;
+  background-color: #144d80;
 }
 
-.instruction-table table {
+.dashboard {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.registers, .stats {
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 15px;
+  border-radius: 10px;
+  width: 45%;
+  box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
+}
+
+.registers div, .stats div {
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+#instrTable {
   width: 100%;
   border-collapse: collapse;
+  background-color: rgba(255,255,255,0.9);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
 }
 
-.instruction-table th, .instruction-table td {
-  border: 1px solid #fff;
-  padding: 0.5rem;
+#instrTable th, #instrTable td {
+  padding: 10px;
   text-align: center;
 }
 
-.instruction-table .current {
-  background-color: rgba(255, 255, 0, 0.5);
-  color: #000;
+#instrTable th {
+  background-color: #0d3b66;
+  color: white;
+}
+
+#instrTable tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+#instrTable tbody tr.current {
+  background-color: #ffd700;
   font-weight: bold;
 }
