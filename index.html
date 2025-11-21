@@ -4,58 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CPU Simulator</title>
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Roboto', sans-serif; background: #1e1e2f; color: #eee; margin: 0; padding: 0; }
+  header { text-align: center; padding: 20px; background: #282a36; color: #f8f8f2; font-size: 2em; font-weight: bold; }
+  .container { display: flex; flex-wrap: wrap; justify-content: space-around; padding: 20px; }
+  .panel { background: #44475a; border-radius: 12px; padding: 20px; margin: 10px; flex: 1 1 300px; min-width: 280px; }
+  h2 { margin-top: 0; color: #50fa7b; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid #6272a4; padding: 8px; text-align: center; }
+  th { background: #6272a4; }
+  tr.current { background: #ffb86c; color: #000; font-weight: bold; }
+  .registers div { margin: 5px 0; }
+  button { margin: 5px; padding: 10px 15px; border: none; border-radius: 8px; background: #50fa7b; color: #000; font-weight: bold; cursor: pointer; }
+  button:hover { background: #8be9fd; }
+  input[type="file"] { margin-top: 10px; }
+  .stats div { margin: 5px 0; }
+</style>
 </head>
 <body>
-  <h1>🖥 CPU Simulator</h1>
 
-  <div class="dashboard">
-    <div class="panel stats">
-      <h2>📊 Statistics</h2>
-      <p>Total Cycles: <span id="totalCycles">0</span></p>
-      <p>Instructions Executed: <span id="totalInstructions">0</span></p>
-      <p>CPI: <span id="cpi">0</span></p>
-      <p>Memory Reads: <span id="memoryReads">0</span></p>
-      <p>Memory Writes: <span id="memoryWrites">0</span></p>
-    </div>
+<header>CPU Simulator</header>
 
-    <div class="panel registers">
-      <h2>🧮 Registers</h2>
-      <p>PC: <span id="PC">0</span></p>
-      <p>AC: <span id="AC">0</span></p>
-      <p>IR: <span id="IR">----</span></p>
-      <p>AR: <span id="AR">0</span></p>
-      <p>DR: <span id="DR">0</span></p>
-    </div>
-  </div>
+<div class="container">
 
-  <div class="panel memory">
-    <h2>💾 Memory</h2>
-    <table id="memoryTable">
-      <thead>
-        <tr><th>Address</th><th>Value</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div class="panel instructions">
-    <h2>📜 Instructions</h2>
-    <table id="instrTable">
-      <thead>
-        <tr><th>Name</th><th>Cycles</th><th>Mem Read</th><th>Mem Write</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div class="controls">
-    <input type="file" id="programFile">
+  <div class="panel">
+    <h2>Program Controls</h2>
+    <input type="file" id="programFile" accept=".txt"><br>
     <button id="loadProgram">Load Program</button>
     <button id="nextInstruction">Next Instruction</button>
-    <button id="run">Run Program</button>
+    <button id="runProgram">Run Program</button>
+    <button id="resetProgram">Reset</button>
   </div>
 
-  <script src="simulator.js"></script>
+  <div class="panel">
+    <h2>Registers</h2>
+    <div class="registers">
+      <div>PC: <span id="PC">0</span></div>
+      <div>AC: <span id="AC">0</span></div>
+      <div>IR: <span id="IR"></span></div>
+      <div>AR: <span id="AR">0</span></div>
+      <div>DR: <span id="DR">0</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Statistics</h2>
+    <div class="stats">
+      <div>Total Cycles: <span id="totalCycles">0</span></div>
+      <div>Instructions Executed: <span id="totalInstructions">0</span></div>
+      <div>CPI: <span id="cpi">0</span></div>
+      <div>Memory Reads: <span id="memoryReads">0</span></div>
+      <div>Memory Writes: <span id="memoryWrites">0</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Instruction Table</h2>
+    <table id="instrTable">
+      <thead>
+        <tr>
+          <th>Instruction</th>
+          <th>Cycles</th>
+          <th>Memory Read</th>
+          <th>Memory Write</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="simulator.js"></script>
 </body>
 </html>
