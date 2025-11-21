@@ -12,17 +12,8 @@ let DR = 0;   // Data Register
 let memory = [];
 
 let program = [];
-let currentInstructionIndex = 0;
 
-// Define instructions
-const instructions = [
-  { name: "LOAD", cycles: 2, memRead: 1, memWrite: 0 },
-  { name: "STORE", cycles: 3, memRead: 0, memWrite: 1 },
-  { name: "ADD", cycles: 1, memRead: 0, memWrite: 0 },
-  { name: "SUB", cycles: 1, memRead: 0, memWrite: 0 }
-];
-
-// Update dashboard stats
+// Update dashboard and registers
 function updateStats() {
   document.getElementById("totalCycles").innerText = totalCycles;
   document.getElementById("totalInstructions").innerText = totalInstructions;
@@ -30,7 +21,6 @@ function updateStats() {
   document.getElementById("memoryReads").innerText = memoryReads;
   document.getElementById("memoryWrites").innerText = memoryWrites;
 
-  // Update registers
   document.getElementById("PC").innerText = PC;
   document.getElementById("AC").innerText = AC;
   document.getElementById("IR").innerText = IR;
@@ -40,21 +30,16 @@ function updateStats() {
 
 // Execute a single instruction
 function executeInstruction() {
-  if (!program.length) {
-    alert("Load a program first!");
-    return;
-  }
+  if (!program.length || PC >= program.length) return;
 
-  if (PC >= program.length) return;
-
-  IR = program[PC];  // fetch
+  IR = program[PC];
   const parts = IR.split(" ");
   const opcode = parts[0];
   const operand = parseInt(parts[1]);
 
   AR = operand;
 
-  switch (opcode) {
+  switch(opcode) {
     case "LOAD":
       AC = memory[AR] || 0;
       totalCycles += 2;
@@ -87,24 +72,14 @@ function loadProgram() {
   const fileInput = document.getElementById("programFile");
   const file = fileInput.files[0];
   
-  if (!file) {
-    alert("Select a file!");
-    return;
-  }
+  if (!file) { alert("Select a file!"); return; }
 
   const reader = new FileReader();
   reader.onload = function(e) {
     program = e.target.result.split("\n").map(line => line.trim()).filter(line => line);
-    PC = 0;
-    AC = 0;
-    IR = "";
-    AR = 0;
-    DR = 0;
+    PC = 0; AC = 0; IR = ""; AR = 0; DR = 0;
     memory = [];
-    totalCycles = 0;
-    totalInstructions = 0;
-    memoryReads = 0;
-    memoryWrites = 0;
+    totalCycles = 0; totalInstructions = 0; memoryReads = 0; memoryWrites = 0;
     updateStats();
     alert("Program loaded!");
   };
@@ -121,5 +96,5 @@ document.getElementById("run").addEventListener("click", () => {
   }, 200);
 });
 
-// Initial stats
+// Initial update
 updateStats();
