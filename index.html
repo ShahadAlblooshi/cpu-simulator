@@ -1,58 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CPU Simulator</title>
-  <link rel="stylesheet" href="style.css">
-<script src="script.js" defer></script>
-
 </head>
 <body>
-  <h1>CPU Instruction Simulator</h1>
+  <h2>CPU Simulator</h2>
 
-  <div class="controls">
-    <button id="nextInstruction">Next Instruction</button>
-    <button id="fastInstruction">Run 20 Instructions Fast</button>
-    <button id="nextCycle">Next Cycle</button>
-    <button id="fastCycle">Run 10 Cycles Fast</button>
-    <button id="run">Run 50 Instructions</button>
-  </div>
-
-  <div class="stats">
-    <h2>Statistics</h2>
-    <p>Total Cycles Executed: <span id="totalCycles">0</span></p>
-    <p>Number of Instructions Executed: <span id="totalInstructions">0</span></p>
-    <p>Average Cycles per Instruction (CPI): <span id="cpi">0</span></p>
+  <div id="stats">
+    <p>Total Cycles: <span id="totalCycles">0</span></p>
+    <p>Instructions Executed: <span id="totalInstructions">0</span></p>
+    <p>CPI: <span id="cpi">0</span></p>
     <p>Memory Reads: <span id="memoryReads">0</span></p>
     <p>Memory Writes: <span id="memoryWrites">0</span></p>
   </div>
-<div id="registers">
-  <h3>Registers</h3>
-  <p>PC: <span id="PC">0</span></p>
-  <p>AC: <span id="AC">0</span></p>
-  <p>IR: <span id="IR"></span></p>
-  <p>AR: <span id="AR">0</span></p>
-  <p>DR: <span id="DR">0</span></p>
-</div>
 
-  <div class="instruction-table">
-    <h2>Instruction Queue</h2>
-    <table id="instrTable">
-      <thead>
-        <tr>
-          <th>Instruction</th>
-          <th>Cycles</th>
-          <th>Memory Read</th>
-          <th>Memory Write</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <div id="registers">
+    <h3>Registers</h3>
+    <p>PC: <span id="PC">0</span></p>
+    <p>AC: <span id="AC">0</span></p>
+    <p>IR: <span id="IR"></span></p>
+    <p>AR: <span id="AR">0</span></p>
+    <p>DR: <span id="DR">0</span></p>
   </div>
-<input type="file" id="programFile" accept=".txt">
-<button onclick="loadProgram()">Load Program</button>
 
-  <script src="script.js"></script>
+  <div id="controls">
+    <button id="nextInstruction">Next Instruction</button>
+    <button id="run">Run Program</button>
+    <input type="file" id="programFile" />
+    <button onclick="loadProgram()">Load Program</button>
+  </div>
+
+  <script src="simulator.js"></script>
 </body>
 </html>
