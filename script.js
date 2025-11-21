@@ -77,6 +77,30 @@ document.getElementById("run").addEventListener("click", () => {
   }, 200);
 });
 
+let program = [];
+
+function loadProgram() {
+  const fileInput = document.getElementById("programFile");
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    alert("Please select a file!");
+    return;
+  }
+
+  const reader = new FileReader();
+  
+  reader.onload = function(e) {
+    const text = e.target.result;
+    // Assuming each line is one instruction
+    program = text.split("\n").map(line => line.trim()).filter(line => line !== "");
+    console.log("Program loaded:", program);
+    alert("Program loaded successfully!");
+  };
+  
+  reader.readAsText(file);
+}
+
 // Initial render
 renderTable();
 updateStats();
