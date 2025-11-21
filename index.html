@@ -2,6 +2,10 @@
 <html>
 <head>
   <title>CPU Simulator</title>
+  <style>
+    #registers, #stats { margin-bottom: 20px; }
+    span { font-weight: bold; }
+  </style>
 </head>
 <body>
   <h2>CPU Simulator</h2>
@@ -24,10 +28,10 @@
   </div>
 
   <div id="controls">
-    <button id="nextInstruction">Next Instruction</button>
-    <button id="run">Run Program</button>
     <input type="file" id="programFile" />
     <button onclick="loadProgram()">Load Program</button>
+    <button id="nextInstruction">Next Instruction</button>
+    <button id="run">Run Program</button>
   </div>
 
   <script src="simulator.js"></script>
