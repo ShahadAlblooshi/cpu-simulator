@@ -3,81 +3,94 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mano-style — Custom Hex CPU Simulator</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Mano-style CPU Simulator</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 300px; margin-top: 20px; }
+    th, td { border: 1px solid #333; padding: 5px; text-align: center; }
+    tr.highlight { background-color: rgba(255, 255, 0, 0.3); }
+    #cli { margin-top: 20px; }
+    #cliInput { width: 200px; padding: 5px; }
+    #cliBtn { padding: 5px 10px; }
+    #output { margin-top: 10px; font-family: monospace; white-space: pre; }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>Custom Hex CPU Simulator</h1>
-    <p class="subtitle">Register-ref codes start with <code>7xxx</code>. Load a <code>.txt</code> memory file (address value)</p>
-  </header>
 
-  <main>
-    <section class="controls">
-      <input id="file" type="file" accept=".txt"/>
-      <button id="btnLoad">Load Program</button>
-      <button id="btnStep">Step (microcycle)</button>
-      <button id="btnInst">Next Instruction</button>
-      <button id="btnRun">Run</button>
-      <button id="btnHalt">Halt</button>
-      <button id="btnReset">Reset</button>
-      <label>Speed: <input id="speed" type="range" min="50" max="1000" step="50" value="400"/></label>
-    </section>
+<h1>Mano-style CPU Simulator</h1>
 
-    <section class="toprow">
-      <div class="panel regs">
-        <h2>Registers</h2>
-        <div class="regrow"><span class="label">PC</span><span id="vPC" class="regval">000</span></div>
-        <div class="regrow"><span class="label">AR</span><span id="vAR" class="regval">000</span></div>
-        <div class="regrow"><span class="label">IR</span><span id="vIR" class="regval">0000</span></div>
-        <div class="regrow"><span class="label">AC</span><span id="vAC" class="regval">0000</span></div>
-        <div class="regrow"><span class="label">DR</span><span id="vDR" class="regval">0000</span></div>
-        <div class="regrow"><span class="label">E</span><span id="vE" class="regval small">0</span></div>
-      </div>
-
-      <div class="panel stats">
-        <h2>Profiler</h2>
-        <div>Total cycles: <span id="cycles">0</span></div>
-        <div>Instructions: <span id="instrs">0</span></div>
-        <div>CPI: <span id="cpi">0.00</span></div>
-        <div>Mem reads: <span id="reads">0</span></div>
-        <div>Mem writes: <span id="writes">0</span></div>
-      </div>
-<div class="cli">
-  <input id="cliInput" type="text" placeholder="Enter command, e.g. show mem 000 00F" />
-  <button id="cliBtn">Execute</button>
-  <pre id="cliOutput"></pre>
+<div id="cli">
+  <input type="text" id="cliInput" placeholder="Enter command" />
+  <button id="cliBtn">Run</button>
+  <div id="output"></div>
 </div>
 
-      <div class="panel trace">
-        <h2>Micro-op Trace</h2>
-        <pre id="trace">(idle)</pre>
-      </div>
-    </section>
+<table id="memTable">
+  <thead>
+    <tr><th>Addr</th><th>Data</th></tr>
+  </thead>
+  <tbody>
+    <!-- Memory rows will be rendered here -->
+  </tbody>
+</table>
 
-    <section class="meminstr">
-      <div class="panel memory">
-        <h2>Memory (first 256 words)</h2>
-        <table id="memtable">
-          <thead><tr><th>Addr</th><th>Value</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
+<script>
+  // Simulated memory (256 words for example)
+  const MEM = new Array(256).fill(0).map((_, i) => i);
 
-      <div class="panel itable">
-        <h2>Instruction Table (decoded)</h2>
-        <table id="itable">
-          <thead><tr><th>Addr</th><th>IR(hex)</th><th>Mnemonic</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+  // Render the memory table
+  function renderMemTable() {
+    const tableBody = document.querySelector('#memTable tbody');
+    tableBody.innerHTML = '';
+    for (let i = 0; i < MEM.length; i++) {
+      const tr = document.createElement('tr');
+      tr.setAttribute('data-addr', i);
+      tr.innerHTML = `<td>${i.toString(16).padStart(2,'0').toUpperCase()}</td><td>${MEM[i].toString(16).padStart(4,'0').toUpperCase()}</td>`;
+      tableBody.appendChild(tr);
+    }
+  }
 
-  <footer>
-    <small>Format for file lines: <code>000 7800</code> (address and 4-digit hex value). Register-ref instructions begin with <code>7</code>.</small>
-  </footer>
+  renderMemTable(); // initial render
 
-  <script src="script.js"></script>
+  // CLI command handler
+  document.getElementById('cliBtn').addEventListener('click', () => {
+    const cmdInput = document.getElementById('cliInput').value.trim().toLowerCase();
+    const outputDiv = document.getElementById('output');
+    const memTable = document.getElementById('memTable');
+
+    // Remove previous highlights
+    memTable.querySelectorAll('tr').forEach(row => row.classList.remove('highlight'));
+
+    if (cmdInput.startsWith('show mem')) {
+      const parts = cmdInput.split(/\s+/);
+      let start = 0;
+      let end = 15;
+
+      if (parts.length >= 3) start = parseInt(parts[2], 16);
+      if (parts.length >= 4) end = parseInt(parts[3], 16);
+
+      // Clamp values
+      start = Math.max(0, start);
+      end = Math.min(MEM.length - 1, end);
+
+      // Highlight memory in table
+      for (let i = start; i <= end; i++) {
+        const row = memTable.querySelector(`tr[data-addr="${i}"]`);
+        if (row) row.classList.add('highlight');
+      }
+
+      // Optional: show text output as well
+      let textOutput = '';
+      for (let i = start; i <= end; i++) {
+        textOutput += `${i.toString(16).padStart(2,'0').toUpperCase()}: ${MEM[i].toString(16).padStart(4,'0').toUpperCase()}\n`;
+      }
+      outputDiv.textContent = textOutput;
+
+    } else {
+      outputDiv.textContent = `Unknown command: ${cmdInput}`;
+    }
+  });
+</script>
+
 </body>
 </html>
