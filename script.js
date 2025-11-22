@@ -140,6 +140,22 @@ document.getElementById('btnLoad').addEventListener('click', () => {
   };
   reader.readAsText(file);
 });
+document.getElementById('cliBtn').addEventListener('click', ()=>{
+  const cmd = document.getElementById('cliInput').value.trim();
+  const out = document.getElementById('cliOutput');
+  if(cmd.startsWith('show mem')){
+    const parts = cmd.split(/\s+/);
+    let start = parseInt(parts[2],16)||0;
+    let end   = parseInt(parts[3],16)||start+15;
+    let text = '';
+    for(let i=start;i<=end;i++){
+      text += hex3(i) + ': ' + (MEM[i]||'0000') + '\n';
+    }
+    out.textContent = text;
+  } else {
+    out.textContent = 'Unknown command';
+  }
+});
 
 // -------------------- Micro-cycle step function --------------------
 function microStep() {
