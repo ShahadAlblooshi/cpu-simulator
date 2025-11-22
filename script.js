@@ -98,6 +98,35 @@ function microStep(){
 
   renderMemTable([addr]);
   updateUI();
+
+
+  // highlight selected memory in table
+function highlightMemory(start,end){
+  const rows = document.querySelectorAll('#memtable tbody tr');
+  rows.forEach(r=>r.classList.remove('highlight'));
+  for(let i=start;i<=end;i++){
+    const row = document.querySelector(`#memtable tbody tr[data-addr="${i}"]`);
+    if(row) row.classList.add('highlight');
+  }
+}
+
+// CLI
+document.getElementById('cliBtn').addEventListener('click',()=>{
+  const cmd = document.getElementById('cliInput').value.trim().toLowerCase();
+  const out = document.getElementById('cliOutput');
+  if(cmd.startsWith('show mem')){
+    const parts = cmd.split(/\s+/);
+    let start = parseInt(parts[2],16)||0;
+    let end = parseInt(parts[3],16)||start;
+    highlightMemory(start,end);
+    let text='';
+    for(let i=start;i<=end;i++){
+      text += hex3(i)+': '+(MEM[i]||'0000')+'\n';
+    }
+    out.textContent = text;
+  } else { out.textContent='Unknown command'; }
+});
+
 }
 
 // -------------------- Initial Render --------------------
