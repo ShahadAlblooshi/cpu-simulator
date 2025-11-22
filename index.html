@@ -1,74 +1,75 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Mano-style CPU Simulator</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mano-style CPU Simulator</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
 <header>
   <h1>Mano-style CPU Simulator</h1>
 </header>
+
 <main>
   <div class="controls">
-    <input type="file" id="file">
+    <input type="file" id="file" />
     <button id="btnLoad">Load Program</button>
-    <button id="btnStep">Step Microcycle</button>
+    <button id="btnStep">Step Micro</button>
     <button id="btnInst">Next Instruction</button>
     <button id="btnRun">Run</button>
     <button id="btnHalt">Halt</button>
     <button id="btnReset">Reset</button>
-    <label>Run speed (ms): <input type="number" id="speed" value="500"></label>
-  </div>
-
-  <div class="meminstr">
-    <div class="memory panel">
-      <h3>Memory</h3>
-      <table id="memtable">
-        <thead><tr><th>Addr</th><th>Data</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div class="itable panel">
-      <h3>Decoded Instructions</h3>
-      <table id="itable">
-        <thead><tr><th>Addr</th><th>Code</th><th>Mnemonic</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <label>Speed(ms)<input type="number" id="speed" value="400" /></label>
   </div>
 
   <div class="toprow">
-    <div class="regs panel">
-      <h3>Registers</h3>
-      <div>PC: <span id="vPC"></span></div>
-      <div>AR: <span id="vAR"></span></div>
-      <div>IR: <span id="vIR"></span></div>
-      <div>AC: <span id="vAC"></span></div>
-      <div>DR: <span id="vDR"></span></div>
-      <div>E: <span id="vE"></span></div>
+    <div class="panel regs">
+      <div class="regrow"><span class="label">PC</span><span class="regval" id="vPC">000</span></div>
+      <div class="regrow"><span class="label">AR</span><span class="regval" id="vAR">000</span></div>
+      <div class="regrow"><span class="label">IR</span><span class="regval" id="vIR">0000</span></div>
+      <div class="regrow"><span class="label">AC</span><span class="regval" id="vAC">0000</span></div>
+      <div class="regrow"><span class="label">DR</span><span class="regval" id="vDR">0000</span></div>
+      <div class="regrow"><span class="label">E</span><span class="regval" id="vE">0</span></div>
     </div>
-    <div class="stats panel">
-      <h3>Profiler</h3>
-      <div>Cycles: <span id="cycles"></span></div>
-      <div>Instructions: <span id="instrs"></span></div>
-      <div>Reads: <span id="reads"></span></div>
-      <div>Writes: <span id="writes"></span></div>
-      <div>CPI: <span id="cpi"></span></div>
+
+    <div class="panel stats">
+      <div>Cycles: <span id="cycles">0</span></div>
+      <div>Instructions: <span id="instrs">0</span></div>
+      <div>Reads: <span id="reads">0</span></div>
+      <div>Writes: <span id="writes">0</span></div>
+      <div>CPI: <span id="cpi">0.00</span></div>
     </div>
-    <div class="trace panel">
-      <h3>Trace</h3>
+
+    <div class="panel trace">
       <pre id="trace"></pre>
     </div>
   </div>
 
-  <div class="cli panel">
-    <input type="text" id="cliInput" placeholder="Enter command">
+  <div class="meminstr">
+    <div class="panel memory">
+      <table id="memtable">
+        <thead><tr><th>Addr</th><th>Value</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="panel itable">
+      <table id="itable">
+        <thead><tr><th>Addr</th><th>Code</th><th>Instruction</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="cli">
+    <input type="text" id="cliInput" placeholder="Enter command" />
     <button id="cliBtn">Run</button>
-    <pre id="cliOutput"></pre>
+    <div id="cliOutput"></div>
   </div>
 </main>
+
+<footer>Mano-style CPU Simulator</footer>
 <script src="script.js"></script>
 </body>
 </html>
