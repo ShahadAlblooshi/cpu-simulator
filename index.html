@@ -1,63 +1,77 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CPU Simulator</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mano-style — Custom Hex CPU Simulator</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
-  <div class="container">
-    <h1>CPU Simulator</h1>
+  <header>
+    <h1>Custom Hex CPU Simulator</h1>
+    <p class="subtitle">Register-ref codes start with <code>7xxx</code>. Load a <code>.txt</code> memory file (address value)</p>
+  </header>
 
-    <div class="controls">
-      <input type="file" id="programFile" accept=".txt">
-      <button id="loadProgram">Load Program</button>
-      <button id="nextInstruction">Next Instruction</button>
-      <button id="runProgram">Run Program</button>
-      <button id="resetProgram">Reset</button>
-    </div>
+  <main>
+    <section class="controls">
+      <input id="file" type="file" accept=".txt"/>
+      <button id="btnLoad">Load Program</button>
+      <button id="btnStep">Step (microcycle)</button>
+      <button id="btnInst">Next Instruction</button>
+      <button id="btnRun">Run</button>
+      <button id="btnHalt">Halt</button>
+      <button id="btnReset">Reset</button>
+      <label>Speed: <input id="speed" type="range" min="50" max="1000" step="50" value="400"/></label>
+    </section>
 
-    <div class="dashboard">
-
-      <div class="panel">
+    <section class="toprow">
+      <div class="panel regs">
         <h2>Registers</h2>
-        <div class="registers">
-          <div>PC: <span id="PC">0</span></div>
-          <div>AC: <span id="AC">0</span></div>
-          <div>IR: <span id="IR">----</span></div>
-          <div>AR: <span id="AR">0</span></div>
-          <div>DR: <span id="DR">0</span></div>
-        </div>
+        <div class="regrow"><span class="label">PC</span><span id="vPC" class="regval">000</span></div>
+        <div class="regrow"><span class="label">AR</span><span id="vAR" class="regval">000</span></div>
+        <div class="regrow"><span class="label">IR</span><span id="vIR" class="regval">0000</span></div>
+        <div class="regrow"><span class="label">AC</span><span id="vAC" class="regval">0000</span></div>
+        <div class="regrow"><span class="label">DR</span><span id="vDR" class="regval">0000</span></div>
+        <div class="regrow"><span class="label">E</span><span id="vE" class="regval small">0</span></div>
       </div>
 
-      <div class="panel">
-        <h2>Stats</h2>
-        <div class="stats">
-          <div>Total Cycles: <span id="totalCycles">0</span></div>
-          <div>Instructions Executed: <span id="totalInstructions">0</span></div>
-          <div>CPI: <span id="cpi">0</span></div>
-          <div>Memory Reads: <span id="memoryReads">0</span></div>
-          <div>Memory Writes: <span id="memoryWrites">0</span></div>
-        </div>
+      <div class="panel stats">
+        <h2>Profiler</h2>
+        <div>Total cycles: <span id="cycles">0</span></div>
+        <div>Instructions: <span id="instrs">0</span></div>
+        <div>CPI: <span id="cpi">0.00</span></div>
+        <div>Mem reads: <span id="reads">0</span></div>
+        <div>Mem writes: <span id="writes">0</span></div>
       </div>
 
-    </div>
+      <div class="panel trace">
+        <h2>Micro-op Trace</h2>
+        <pre id="trace">(idle)</pre>
+      </div>
+    </section>
 
-    <h2>Instruction Table</h2>
-    <table id="instrTable">
-      <thead>
-        <tr>
-          <th>Instruction</th>
-          <th>IR Value</th>
-          <th>Cycles</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <section class="meminstr">
+      <div class="panel memory">
+        <h2>Memory (first 256 words)</h2>
+        <table id="memtable">
+          <thead><tr><th>Addr</th><th>Value</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
 
-  </div>
+      <div class="panel itable">
+        <h2>Instruction Table (decoded)</h2>
+        <table id="itable">
+          <thead><tr><th>Addr</th><th>IR(hex)</th><th>Mnemonic</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Format for file lines: <code>000 7800</code> (address and 4-digit hex value). Register-ref instructions begin with <code>7</code>.</small>
+  </footer>
 
   <script src="script.js"></script>
 </body>
