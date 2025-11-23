@@ -7,6 +7,7 @@ let halted=false;
 let profiler = {cycles:0, instr:0, reads:0, writes:0};
 let runTimer=null;
 
+
 // -------------------- Instruction maps --------------------
 const regRefMap = {
   0x7800:'CLA',0x7400:'CLE',0x7200:'CMA',0x7100:'CME',
@@ -106,6 +107,77 @@ document.getElementById('btnLoad').addEventListener('click',()=>{
     updateUI(['PC','AR','IR','AC','DR']);
   };
   reader.readAsText(file);
+});
+document.getElementById('cliBtn').addEventListener('click', () => {
+  const cmd = document.getElementById('cliInput').value.trim().toLowerCase();
+  const out = document.getElementById('cliOutput');
+  const parts = cmd.split(/\s+/);
+
+  // ============================
+  // SHOW REG COMMAND
+  // ============================
+  if(parts[0] === "show" && ["ac","pc","ar","ir","dr","e"].includes(parts[1])){
+      const reg = parts[1].toUpperCase();
+      const value = {
+        AC, PC, AR, IR, DR, E
+      }[reg];
+
+      out.textContent = `${reg} = ${value.toString(16).padStart(4,'0').toUpperCase()}`;
+      return;
+  }
+
+  // ============================
+  // SHOW MEM address [count]
+  // ============================
+  if(parts[0] === "show" && parts[1] === "mem"){
+      let start = parseInt(parts[2],16);
+      let count = parts[3] ? parseInt(parts[3],10) : 1;
+      let end = start + count - 1;
+
+      highlightMemory(start,end);
+
+      let text = "";
+      for(let i=start;i<=end;i++){
+        text += `${i.toString(16).padStart(3,'0').toUpperCase()}: ${MEM[i].toString(16).padStart(4,'0').toUpperCase()}\n`;
+      }
+      out.textContent = text;
+      return;
+  }
+
+  // ============================
+  // SHOW ALL (registers + profiler)
+  // ============================
+  if(cmd === "show all"){
+      out.textContent =
+        `PC = ${hex4(PC)}\n` +
+        `AR = ${hex4(AR)}\n` +
+        `IR = ${hex4(IR)}\n` +
+        `AC = ${hex4(AC)}\n` +
+        `DR = ${hex4(DR)}\n` +
+        `E  = ${E}\n\n` +
+        `Cycles = ${profiler.cycles}\n` +
+        `Instr  = ${profiler.instr}\n` +
+        `Reads  = ${profiler.reads}\n` +
+        `Writes = ${profiler.writes}\n` +
+        `CPI    = ${profiler.cpi}`;
+      return;
+  }
+
+  // ============================
+  // SHOW PROFILER
+  // ============================
+  if(cmd === "show profiler"){
+      out.textContent =
+        `Cycles = ${profiler.cycles}\n` +
+        `Instructions = ${profiler.instr}\n` +
+        `Reads = ${profiler.reads}\n` +
+        `Writes = ${profiler.writes}\n` +
+        `CPI = ${profiler.cpi}`;
+      return;
+  }
+
+  // UNKNOWN COMMAND
+  out.textContent = "Unknown command";
 });
 
 // -------------------- MicroStep --------------------
