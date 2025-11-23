@@ -143,10 +143,13 @@ function microStep() {
 
   if (opcodeTop!==0x7) { // memory ref
     if (SC===2) { AR=addrField; updateUI(['AR']); SC=3; return; }
+
     const indirect=(IR&0x0800)!==0;
     let effAddr=AR;
     if (indirect) { effAddr=parseHexTok(MEM[AR]||'0000'); profiler.reads++; pushTrace(`Indirect: AR->0x${hex3(effAddr)}`); }
+
     if (SC===3) { DR=parseHexTok(MEM[effAddr]||'0000'); profiler.reads++; updateUI(['DR']); SC=4; return; }
+
     if (SC===4) {
       const op=memOpMap[opcodeTop]||'UNK';
       switch(op) {
