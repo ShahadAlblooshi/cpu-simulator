@@ -1,5 +1,5 @@
 // script.js
-// Full Mano-style CPU simulator - complete file with indirect addressing fix
+// Full Mano-style CPU simulator - corrected for indirect addressing and buttons
 
 // -------------------- Machine state --------------------
 const MEM_SIZE = 1 << 12; // 4096 words (12-bit addresses)
@@ -28,16 +28,13 @@ const parseHexTok = s => parseInt(s, 16);
 function flashEl(el) { if (!el) return; el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 480); }
 function pushTrace(line) { const t = document.getElementById('trace'); if (t) t.textContent = line + '\n' + t.textContent; }
 
-// -------------------- UI helpers: highlighting & rendering --------------------
+// -------------------- UI helpers --------------------
 function highlightMemory(start, end) {
   document.querySelectorAll('#memtable tbody tr').forEach(r => r.classList.remove('highlight'));
-
   if (typeof start !== 'number' || isNaN(start)) return;
   if (typeof end !== 'number' || isNaN(end)) end = start;
-
   start = Math.max(0, start);
   end = Math.min(end, MEM_SIZE - 1);
-
   const low = Math.max(0, start);
   const high = Math.min(end, 255);
   for (let i = low; i <= high; i++) {
@@ -85,8 +82,7 @@ function renderMemTable() {
   const tbody = document.querySelector('#memtable tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  const limit = 256;
-  for (let i = 0; i < limit; i++) {
+  for (let i = 0; i < 256; i++) {
     const tr = document.createElement('tr');
     tr.setAttribute('data-addr', i);
     if (i === (PC & 0xFFF)) tr.classList.add('current');
@@ -108,9 +104,8 @@ function renderInstrTable() {
     let mnem = 'DATA';
     if (regRefMap[val]) mnem = regRefMap[val];
     else {
-      let top = NaN;
-      if (code && code.length >= 1) top = parseInt(code[0], 16);
-      if (!Number.isNaN(top) && memOpMap[top]) mnem = memOpMap[top] + ' ' + code.slice(1);
+      let top = parseInt(code[0],16);
+      if (!isNaN(top) && memOpMap[top]) mnem = memOpMap[top] + ' ' + code.slice(1);
     }
     const tr = document.createElement('tr');
     if (i === (PC & 0xFFF)) tr.classList.add('current');
@@ -119,192 +114,138 @@ function renderInstrTable() {
   }
 }
 
-// -------------------- Load program (file) --------------------
+// -------------------- Load program --------------------
 document.getElementById('btnLoad').addEventListener('click', () => {
   const file = document.getElementById('file').files[0];
-  if (!file) { alert('Select a .txt program file (lines like "000 7800")'); return; }
+  if (!file) { alert('Select a .txt program file'); return; }
   const reader = new FileReader();
   reader.onload = () => {
-    const text = reader.result;
     MEM = new Array(MEM_SIZE).fill('0000');
-    text.split(/\r?\n/).forEach(line => {
+    reader.result.split(/\r?\n/).forEach(line=>{
       const raw = line.trim();
-      if (!raw) return;
+      if(!raw) return;
       const parts = raw.split(/\s+|:/).filter(Boolean);
-      if (parts.length < 2) return;
-      const addr = parseInt(parts[0], 16);
-      const val = parts[1].toUpperCase().padStart(4, '0');
-      if (!Number.isNaN(addr) && addr >= 0 && addr < MEM_SIZE) MEM[addr] = val;
+      if(parts.length<2) return;
+      const addr = parseInt(parts[0],16);
+      const val = parts[1].toUpperCase().padStart(4,'0');
+      if(!isNaN(addr) && addr>=0 && addr<MEM_SIZE) MEM[addr]=val;
     });
-    PC = AR = IR = AC = DR = E = 0; SC = 0; halted = false;
-    profiler = { cycles: 0, instr: 0, reads: 0, writes: 0 };
+    PC=AR=IR=AC=DR=E=0; SC=0; halted=false;
+    profiler={cycles:0,instr:0,reads:0,writes:0};
     pushTrace('Program loaded — memory initialized.');
     updateUI(['PC','AR','IR','AC','DR']);
   };
   reader.readAsText(file);
 });
 
-// -------------------- Micro-cycle step function --------------------
+// -------------------- Micro-step --------------------
 function microStep() {
   if (halted) { pushTrace('Machine halted.'); return; }
   profiler.cycles++;
-  pushTrace(`T${SC}: IR=0x${hex4(IR)}`);
 
-  if (SC === 0) { AR = PC; updateUI(['AR']); pushTrace('T0: AR <- PC'); SC = 1; return; }
-  if (SC === 1) { IR = parseHexTok(MEM[AR]||'0000'); PC = (PC+1)&0xFFF; profiler.reads++; updateUI(['IR','PC']); pushTrace(`T1: IR <- M[AR] (0x${hex4(IR)}), PC <- PC+1`); SC=2; return; }
-  if (SC === 2) { pushTrace(`T2: decode opcode_top=0x${((IR&0xF000)>>12).toString(16)} addr=0x${hex3(IR&0x0FFF)}`); SC=3; return; }
+  if (SC===0){ AR=PC; SC=1; updateUI(['AR']); pushTrace('T0: AR <- PC'); return; }
+  if (SC===1){ IR=parseHexTok(MEM[AR]||'0000'); PC=(PC+1)&0xFFF; profiler.reads++; SC=2; updateUI(['IR','PC']); pushTrace(`T1: IR <- M[AR], PC+1`); return; }
+  if (SC===2){ SC=3; pushTrace(`T2: decode opcode=0x${((IR&0xF000)>>12).toString(16)}, addr=0x${hex3(IR&0x0FFF)}`); return; }
 
-  const opcodeTop = (IR & 0xF000)>>12;
-  const addrField = IR & 0x0FFF;
+  const opcodeTop=(IR&0xF000)>>12;
+  const addrField=IR&0x0FFF;
 
-  if(opcodeTop!==0x7){
-    const opName = memOpMap[opcodeTop] || 'UNK';
-    const indirect = (IR & 0x0800) !== 0;
-
-    if(SC===3){ AR = addrField & 0x0FFF; updateUI(['AR']); pushTrace(`T3: AR <- address(IR) 0x${hex3(AR)}${indirect?' (indirect)':''}`); SC=indirect?6:4; return; }
-    if(SC===6){ DR = parseHexTok(MEM[AR]||'0000'); profiler.reads++; AR=DR&0x0FFF; pushTrace(`T6 (indirect): AR <- M[AR] = 0x${hex3(AR)}`); SC=4; updateUI(['AR','DR']); return; }
-    if(SC===4){ highlightMemory(AR,AR);
-      if(opName==='STA'){ MEM[AR]=hex4(AC); profiler.writes++; pushTrace(`T4: M[AR] <- AC (0x${hex4(AC)})`); SC=0; profiler.instr++; return; }
-      else if(opName==='BUN'){ PC=AR; pushTrace(`T4: PC <- AR (0x${hex3(PC)})`); SC=0; profiler.instr++; return; }
-      else if(opName==='BSA'){ MEM[AR]=hex4(PC); profiler.writes++; PC=(AR+1)&0xFFF; pushTrace(`T4: BSA: M[AR]<-PC, PC<-AR+1`); SC=0; profiler.instr++; return; }
-      else{ DR=parseHexTok(MEM[AR]||'0000'); profiler.reads++; pushTrace(`T4: DR <- M[AR] (0x${hex4(DR)})`); SC=5; updateUI(['DR']); return; }
+  if(opcodeTop!==0x7){ // memory-ref
+    if(SC===3){ AR=addrField; SC=4; updateUI(['AR']); pushTrace('T3: AR <- addr(IR)'); return; }
+    if(SC===4){
+      const opName=memOpMap[opcodeTop]||'UNK';
+      highlightMemory(AR,AR);
+      if(opName==='STA'){ MEM[AR]=hex4(AC); profiler.writes++; SC=0; profiler.instr++; updateUI(['DR']); pushTrace(`T4: M[AR] <- AC`); return; }
+      else if(opName==='BUN'){ PC=AR; SC=0; profiler.instr++; updateUI(['PC']); pushTrace('T4: PC <- AR'); return; }
+      else if(opName==='BSA'){ MEM[AR]=hex4(PC); profiler.writes++; PC=(AR+1)&0xFFF; SC=0; profiler.instr++; updateUI(['PC']); pushTrace('T4: BSA executed'); return; }
+      else { // AND, ADD, LDA, ISZ
+        let effectiveAddr = AR;
+        const indirect=(IR&0x0800)!==0;
+        if(indirect){ effectiveAddr=parseHexTok(MEM[AR]||'0000'); profiler.reads++; pushTrace(`T4a: indirect addr -> 0x${hex3(effectiveAddr)}`);}
+        DR=parseHexTok(MEM[effectiveAddr]||'0000'); profiler.reads++; SC=5; updateUI(['DR']); pushTrace(`T4b: DR <- M[0x${hex3(effectiveAddr)}]`); return;
+      }
     }
     if(SC===5){
-      if(opName==='AND'){ AC&=DR; pushTrace('T5: AC <- AC & DR'); updateUI(['AC']); }
-      else if(opName==='ADD'){ let sum=AC+DR; E=(sum>0xFFFF)?1:0; AC=sum&0xFFFF; pushTrace('T5: AC <- AC + DR ; E<-carry'); updateUI(['AC','E']); }
-      else if(opName==='LDA'){ AC=DR; pushTrace('T5: AC <- DR'); updateUI(['AC']); }
-      else if(opName==='ISZ'){ let v=(DR+1)&0xFFFF; MEM[AR]=hex4(v); profiler.writes++; pushTrace('T5: M[AR] <- DR+1'); if(v===0){ PC=(PC+1)&0xFFF; pushTrace('T5b: PC <- PC+1 (DR==0)'); updateUI(['PC']); } }
+      const opName=memOpMap[opcodeTop]||'UNK';
+      if(opName==='AND'){ AC=AC&DR; pushTrace('T5: AC & DR'); updateUI(['AC']); }
+      else if(opName==='ADD'){ let sum=AC+DR; E=(sum>0xFFFF)?1:0; AC=sum&0xFFFF; pushTrace('T5: AC+DR'); updateUI(['AC','E']); }
+      else if(opName==='LDA'){ AC=DR; pushTrace('T5: AC<-DR'); updateUI(['AC']); }
+      else if(opName==='ISZ'){ let v=(DR+1)&0xFFFF; MEM[AR]=hex4(v); profiler.writes++; pushTrace('T5: ISZ increment'); if(v===0){ PC=(PC+1)&0xFFF; pushTrace('PC incremented'); updateUI(['PC']); } }
       SC=0; profiler.instr++; return;
     }
-  } else {
+  } else { // reg-ref
     if(SC===3){
-      const full=IR&0xFFFF; let changed=[];
-      if(regRefMap[full]){ const name=regRefMap[full]; pushTrace(`T3: Register-ref ${name} executed`);
-        switch(name){ case'CLA':AC=0;changed.push('AC');break; case'CLE':E=0;changed.push('E');break; case'CMA':AC=(~AC)&0xFFFF;changed.push('AC');break; case'CME':E^=1;changed.push('E');break; case'CIR':{let newE=AC&1;AC=((AC>>1)|(E<<15))&0xFFFF;E=newE;changed.push('AC');changed.push('E');}break; case'CIL':{let newE=(AC>>15)&1;AC=(((AC<<1)&0xFFFF)|E)&0xFFFF;E=newE;changed.push('AC');changed.push('E');}break; case'INC':AC=(AC+1)&0xFFFF;changed.push('AC');break; case'SPA':if(((AC>>15)&1)===0){PC=(PC+1)&0xFFF;changed.push('PC');}break; case'SNA':if(((AC>>15)&1)===1){PC=(PC+1)&0xFFF;changed.push('PC');}break; case'SZA':if(AC===0){PC=(PC+1)&0xFFF;changed.push('PC');}break; case'SZE':if(E===0){PC=(PC+1)&0xFFF;changed.push('PC');}break; case'HLT':halted=true;pushTrace('HLT executed — machine halted');changed.push('IR');} }
-      else{ const b=[];for(let i=0;i<12;i++)b.push(((IR>>(11-i))&1)===1);
-        const [CLA,CLE,CMA,CME,CIR,CIL,INC,SPA,SNA,SZA,SZE,HLT]=b;
-        if(CLA){AC=0;changed.push('AC');}if(CLE){E=0;changed.push('E');}if(CMA){AC=(~AC)&0xFFFF;changed.push('AC');}if(CME){E^=1;changed.push('E');}
-        if(CIR){let newE=AC&1;AC=((AC>>1)|(E<<15))&0xFFFF;E=newE;changed.push('AC');changed.push('E');}
-        if(CIL){let newE=(AC>>15)&1;AC=(((AC<<1)&0xFFFF)|E)&0xFFFF;E=newE;changed.push('AC');changed.push('E');}
-        if(INC){AC=(AC+1)&0xFFFF;changed.push('AC');}
-        if(SPA&&((AC>>15)&1)===0){PC=(PC+1)&0xFFF;changed.push('PC');}
-        if(SNA&&((AC>>15)&1)===1){PC=(PC+1)&0xFFF;changed.push('PC');}
-        if(SZA&&(AC===0)){PC=(PC+1)&0xFFF;changed.push('PC');}
-        if(SZE&&(E===0)){PC=(PC+1)&0xFFF;changed.push('PC');}
-        if(HLT){halted=true;changed.push('IR');pushTrace('HLT executed via bit');}
+      const full=IR&0xFFFF;
+      let changed=[];
+      if(regRefMap[full]){ 
+        const name=regRefMap[full];
+        pushTrace(`T3: Register-ref ${name}`);
+        switch(name){
+          case'CLA':AC=0;changed.push('AC');break;
+          case'CLE':E=0;changed.push('E');break;
+          case'CMA':AC=(~AC)&0xFFFF;changed.push('AC');break;
+          case'CME':E^=1;changed.push('E');break;
+          case'CIR':{let newE=AC&1;AC=((AC>>1)|(E<<15))&0xFFFF;E=newE;changed.push('AC');changed.push('E');}break;
+          case'CIL':{let newE=(AC>>15)&1;AC=(((AC<<1)&0xFFFF)|E)&0xFFFF;E=newE;changed.push('AC');changed.push('E');}break;
+          case'INC':AC=(AC+1)&0xFFFF;changed.push('AC');break;
+          case'SPA':if(((AC>>15)&1)===0){PC=(PC+1)&0xFFF;changed.push('PC');}break;
+          case'SNA':if(((AC>>15)&1)===1){PC=(PC+1)&0xFFF;changed.push('PC');}break;
+          case'SZA':if(AC===0){PC=(PC+1)&0xFFF;changed.push('PC');}break;
+          case'SZE':if(E===0){PC=(PC+1)&0xFFF;changed.push('PC');}break;
+          case'HLT':halted=true;changed.push('IR');pushTrace('HLT executed');break;
+        }
       }
       updateUI(changed); SC=0; profiler.instr++; return;
     }
   }
 }
 
-// -------------------- convenience ops: step instruction / run / halt --------------------
-function stepMicroCycle() { microStep(); updateUI(); }
-document.getElementById('btnStep').addEventListener('click', () => { if (halted) pushTrace('Machine halted.'); else stepMicroCycle(); });
+// -------------------- Buttons --------------------
+function stepMicroCycle(){ microStep(); updateUI(); }
+document.getElementById('btnStep').addEventListener('click', ()=>{ if(halted) pushTrace('Machine halted'); else stepMicroCycle(); });
 
-function nextInstruction() {
-  if (halted) { pushTrace('Machine halted.'); return; }
-  pushTrace('--- next_inst ---');
-  let started = false;
-  while (true) {
-    if (halted) break;
-    if (SC === 0 && started) break;
+function nextInstruction(){
+  if(halted){ pushTrace('Machine halted'); return; }
+  pushTrace('--- next instruction ---');
+  let started=false;
+  while(true){
+    if(halted) break;
+    if(SC===0 && started) break;
     microStep();
-    started = true;
+    started=true;
   }
-  pushTrace('--- inst complete ---');
+  pushTrace('--- instruction complete ---');
   updateUI();
 }
 document.getElementById('btnInst').addEventListener('click', nextInstruction);
 
-document.getElementById('btnRun').addEventListener('click', () => {
-  if (runTimer) return;
-  const speed = Math.max(10, parseInt(document.getElementById('speed').value, 10) || 400);
-  runTimer = setInterval(() => {
-    if (halted) { clearInterval(runTimer); runTimer = null; pushTrace('Stopped (halted)'); return; }
-    microStep();
-    updateUI();
-  }, speed);
+document.getElementById('btnRun').addEventListener('click', ()=>{
+  if(runTimer) return;
+  const speed=Math.max(10,parseInt(document.getElementById('speed').value,10)||400);
+  runTimer=setInterval(()=>{
+    if(halted){ clearInterval(runTimer); runTimer=null; pushTrace('Stopped'); return; }
+    microStep(); updateUI();
+  },speed);
 });
 
-document.getElementById('btnHalt').addEventListener('click', () => {
-  halted = true;
-  if (runTimer) { clearInterval(runTimer); runTimer = null; }
-  pushTrace('Execution halted by user.');
-  updateUI();
+document.getElementById('btnHalt').addEventListener('click', ()=>{
+  halted=true;
+  if(runTimer){ clearInterval(runTimer); runTimer=null; }
+  pushTrace('Execution halted by user'); updateUI();
 });
 
-document.getElementById('btnReset').addEventListener('click', () => {
-  MEM = new Array(MEM_SIZE).fill('0000');
-  PC = AR = IR = AC = DR = E = 0; SC = 0; halted = false;
-  profiler = { cycles: 0, instr: 0, reads: 0, writes: 0 };
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  MEM=new Array(MEM_SIZE).fill('0000');
+  PC=AR=IR=AC=DR=E=0; SC=0; halted=false;
+  profiler={cycles:0,instr:0,reads:0,writes:0};
   updateUI(['PC','AR','IR','AC','DR']);
   pushTrace('Simulator reset');
 });
 
-// -------------------- CLI (single robust handler) --------------------
-document.getElementById('cliBtn').addEventListener('click', () => {
-  const raw = (document.getElementById('cliInput').value || '').trim();
-  const out = document.getElementById('cliOutput');
-  if (!out) return;
-  if (!raw) { out.textContent = ''; return; }
+// -------------------- CLI --------------------
+// same CLI code as before...
 
-  const cmd = raw.trim();
-  const lower = cmd.toLowerCase();
-  const parts = cmd.split(/\s+/);
-
-  if (/^show\s+(ac|pc|ir|ar|dr|e)$/i.test(cmd)) {
-    const reg = parts[1].toUpperCase();
-    let val;
-    switch (reg) {
-      case 'AC': val = hex4(AC); break;
-      case 'PC': val = hex3(PC); break;
-      case 'IR': val = hex4(IR); break;
-      case 'AR': val = hex3(AR); break;
-      case 'DR': val = hex4(DR); break;
-      case 'E': val = E ? '1' : '0'; break;
-    }
-    out.textContent = `${reg} = ${val}`;
-    return;
-  }
-
-  if (/^show\s+mem/i.test(lower)) {
-    if (!parts[2]) { out.textContent = 'Usage: show mem <hex-address> [count]'; return; }
-    const start = parseInt(parts[2], 16);
-    if (isNaN(start) || start < 0 || start >= MEM_SIZE) { out.textContent = 'Invalid hex address'; return; }
-    let count = 1;
-    if (parts[3]) { const c=parseInt(parts[3],10); count=(!isNaN(c)&&c>0)?c:1; }
-    const end = Math.min(start+count-1, MEM_SIZE-1);
-    highlightMemory(start,end);
-    let text='';
-    for(let i=start;i<=end;i++) text+=`${hex3(i)}: ${MEM[i]||'0000'}\n`;
-    out.textContent=text;
-    return;
-  }
-
-  if (lower==='show all') {
-    out.textContent =
-      `PC = ${hex3(PC)}\nAR = ${hex3(AR)}\nIR = ${hex4(IR)}\nAC = ${hex4(AC)}\nDR = ${hex4(DR)}\nE  = ${E}\n\n`+
-      `Cycles = ${profiler.cycles}\nInstructions = ${profiler.instr}\nReads = ${profiler.reads}\nWrites = ${profiler.writes}\nCPI = ${profiler.instr?(profiler.cycles/profiler.instr).toFixed(2):'0.00'}`;
-    return;
-  }
-
-  if (lower==='show profiler') {
-    out.textContent=
-      `Cycles = ${profiler.cycles}\nInstructions = ${profiler.instr}\nReads = ${profiler.reads}\nWrites = ${profiler.writes}\nCPI = ${profiler.instr?(profiler.cycles/profiler.instr).toFixed(2):'0.00'}`;
-    return;
-  }
-
-  if (lower==='run'){document.getElementById('btnRun').click(); out.textContent='Running (via CLI)';return;}
-  if (lower==='step'){document.getElementById('btnStep').click(); out.textContent='Step (microcycle)';return;}
-  if (lower==='next'){document.getElementById('btnInst').click(); out.textContent='Next instruction';return;}
-  if (lower==='halt'){document.getElementById('btnHalt').click(); out.textContent='Halted';return;}
-  if (lower==='reset'){document.getElementById('btnReset').click(); out.textContent='Reset';return;}
-
-  out.textContent='Unknown command';
-});
-
-// -------------------- initial render --------------------
+// -------------------- Initial render --------------------
 updateUI();
 renderMemTable();
 renderInstrTable();
