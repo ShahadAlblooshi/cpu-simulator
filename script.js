@@ -1,9 +1,14 @@
+// script.js
+// Full Mano-style CPU simulator - complete file
+// Drop-in replacement for your existing script.js
+
 // -------------------- Machine state --------------------
-const MEM_SIZE = 1 << 12; // 4096 words
-let MEM = new Array(MEM_SIZE).fill('0000');
+const MEM_SIZE = 1 << 12; // 4096 words (12-bit addresses)
+let MEM = new Array(MEM_SIZE).fill('0000'); // stored as 4-digit hex strings
 let PC = 0, AR = 0, IR = 0, AC = 0, DR = 0, E = 0;
-let SC = 0; // microcycle
+let SC = 0; // microcycle state
 let halted = false;
+
 let profiler = { cycles: 0, instr: 0, reads: 0, writes: 0 };
 let runTimer = null;
 
@@ -18,18 +23,31 @@ const memOpMap = { 0x0: 'AND', 0x1: 'ADD', 0x2: 'LDA', 0x3: 'STA', 0x4: 'BUN', 0
 // -------------------- Helpers --------------------
 const hex4 = n => (n & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
 const hex3 = n => (n & 0xFFF).toString(16).toUpperCase().padStart(3, '0');
+const hex2 = n => (n & 0xFF).toString(16).toUpperCase().padStart(2, '0');
 const parseHexTok = s => parseInt(s, 16);
+
 function flashEl(el) { if (!el) return; el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 480); }
 function pushTrace(line) { const t = document.getElementById('trace'); if (t) t.textContent = line + '\n' + t.textContent; }
 
-// -------------------- UI helpers --------------------
+// -------------------- UI helpers: highlighting & rendering --------------------
+
+// Highlight memory rows in the rendered memory table (only first 256 shown)
+// start/end are numeric addresses (base 10). This function clamps safely.
 function highlightMemory(start, end) {
-  // clear previous highlights
+  // Remove previous highlights
   document.querySelectorAll('#memtable tbody tr').forEach(r => r.classList.remove('highlight'));
-  // clamp and highlight
-  start = Math.max(0, start || 0);
-  end = Math.min( (typeof end === 'number' ? end : start), 255 );
-  for (let i = start; i <= end; i++) {
+
+  if (typeof start !== 'number' || isNaN(start)) return;
+  if (typeof end !== 'number' || isNaN(end)) end = start;
+
+  // clamp range
+  start = Math.max(0, start);
+  end = Math.min(end, MEM_SIZE - 1);
+
+  // Only rows 0..255 are rendered; highlight those in range
+  const low = Math.max(0, start);
+  const high = Math.min(end, 255);
+  for (let i = low; i <= high; i++) {
     const row = document.querySelector(`#memtable tr[data-addr="${i}"]`);
     if (row) row.classList.add('highlight');
   }
@@ -37,86 +55,103 @@ function highlightMemory(start, end) {
 
 // -------------------- Update UI --------------------
 function updateUI(changed = []) {
-  const el = id => document.getElementById(id);
-  if (el('vPC')) el('vPC').textContent = hex3(PC);
-  if (el('vAR')) el('vAR').textContent = hex3(AR);
-  if (el('vIR')) el('vIR').textContent = hex4(IR);
-  if (el('vAC')) el('vAC').textContent = hex4(AC);
-  if (el('vDR')) el('vDR').textContent = hex4(DR);
-  if (el('vE')) el('vE').textContent = E ? '1' : '0';
+  const safeSet = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  };
 
-  ['vPC','vAR','vIR','vAC','vDR','vE'].forEach(id => {
-    const e = document.getElementById(id);
-    if (e) e.classList.remove('current','flash');
+  safeSet('vPC', hex3(PC));
+  safeSet('vAR', hex3(AR));
+  safeSet('vIR', hex4(IR));
+  safeSet('vAC', hex4(AC));
+  safeSet('vDR', hex4(DR));
+  safeSet('vE', E ? '1' : '0');
+
+  // remove previous 'current' markers
+  ['vPC','vAR','vIR','vAC','vDR','vE'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('current','flash');
   });
-  changed.forEach(c => {
-    const e = document.getElementById('v' + c);
-    if (e) { e.classList.add('current'); flashEl(e); setTimeout(()=>e.classList.remove('current'),420); }
+
+  // flash the changed registers
+  changed.forEach(c=>{
+    const el = document.getElementById('v' + c);
+    if (el) { el.classList.add('current'); flashEl(el); setTimeout(()=>el.classList.remove('current'),420); }
   });
 
-  if (el('cycles')) el('cycles').textContent = profiler.cycles;
-  if (el('instrs')) el('instrs').textContent = profiler.instr;
-  if (el('reads')) el('reads').textContent = profiler.reads;
-  if (el('writes')) el('writes').textContent = profiler.writes;
-  if (el('cpi')) el('cpi').textContent = profiler.instr ? (profiler.cycles / profiler.instr).toFixed(2) : '0.00';
+  // profiler stats
+  safeSet('cycles', profiler.cycles);
+  safeSet('instrs', profiler.instr);
+  safeSet('reads', profiler.reads);
+  safeSet('writes', profiler.writes);
+  safeSet('cpi', profiler.instr ? (profiler.cycles / profiler.instr).toFixed(2) : '0.00');
 
+  // re-render tables (memory + decoded instructions)
   renderMemTable();
   renderInstrTable();
 }
 
-// -------------------- Render Memory --------------------
+// -------------------- Render Memory & Instruction Tables --------------------
 function renderMemTable() {
   const tbody = document.querySelector('#memtable tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  for (let i = 0; i < 256; i++) {
+  const limit = 256;
+  for (let i = 0; i < limit; i++) {
     const tr = document.createElement('tr');
     tr.setAttribute('data-addr', i);
-    if (i === PC) tr.classList.add('current');
-    tr.innerHTML = `<td class="addr">${hex3(i)}</td><td class="val">${MEM[i]}</td>`;
+    if (i === (PC & 0xFFF)) tr.classList.add('current');
+    const td1 = document.createElement('td'); td1.className = 'addr'; td1.textContent = hex3(i);
+    const td2 = document.createElement('td'); td2.className = 'val'; td2.textContent = (MEM[i] || '0000');
+    tr.appendChild(td1);
+    tr.appendChild(td2);
     tbody.appendChild(tr);
   }
 }
 
-// -------------------- Render Instructions --------------------
 function renderInstrTable() {
   const tbody = document.querySelector('#itable tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
   for (let i = 0; i < 256; i++) {
     const code = MEM[i] || '0000';
-    const val = parseHexTok(code || '0000');
+    const val = parseHexTok(code);
     let mnem = 'DATA';
     if (regRefMap[val]) mnem = regRefMap[val];
     else {
-      // safe parse: if code is not a hex string, fallback
-      const top = code && code.length ? parseInt(code[0], 16) : NaN;
+      // safe parse top nibble
+      let top = NaN;
+      if (code && code.length >= 1) {
+        top = parseInt(code[0], 16);
+      }
       if (!Number.isNaN(top) && memOpMap[top]) mnem = memOpMap[top] + ' ' + code.slice(1);
     }
     const tr = document.createElement('tr');
-    if (i === PC) tr.classList.add('current');
+    if (i === (PC & 0xFFF)) tr.classList.add('current');
     tr.innerHTML = `<td class="addr">${hex3(i)}</td><td class="val">${code}</td><td>${mnem}</td>`;
     tbody.appendChild(tr);
   }
 }
 
-// -------------------- Load Program --------------------
+// -------------------- Load program (file) --------------------
 document.getElementById('btnLoad').addEventListener('click', () => {
   const file = document.getElementById('file').files[0];
-  if (!file) { alert('Select a .txt program file'); return; }
+  if (!file) { alert('Select a .txt program file (lines like "000 7800")'); return; }
   const reader = new FileReader();
   reader.onload = () => {
     const text = reader.result;
     MEM = new Array(MEM_SIZE).fill('0000');
     text.split(/\r?\n/).forEach(line => {
-      line = line.trim();
-      if (!line) return;
-      const parts = line.split(/\s+/);
+      const raw = line.trim();
+      if (!raw) return;
+      // accept "000 7800" or "000:7800"
+      const parts = raw.split(/\s+|:/).filter(Boolean);
       if (parts.length < 2) return;
       const addr = parseInt(parts[0], 16);
       const val = parts[1].toUpperCase().padStart(4, '0');
       if (!Number.isNaN(addr) && addr >= 0 && addr < MEM_SIZE) MEM[addr] = val;
     });
+    // reset CPU state (but keep UI)
     PC = AR = IR = AC = DR = E = 0; SC = 0; halted = false;
     profiler = { cycles: 0, instr: 0, reads: 0, writes: 0 };
     pushTrace('Program loaded — memory initialized.');
@@ -125,13 +160,22 @@ document.getElementById('btnLoad').addEventListener('click', () => {
   reader.readAsText(file);
 });
 
-// -------------------- MicroStep --------------------
+// -------------------- Micro-cycle step function --------------------
 function microStep() {
   if (halted) { pushTrace('Machine halted.'); return; }
   profiler.cycles++;
   pushTrace(`T${SC}: IR=0x${hex4(IR)}`);
 
-  if (SC === 0) { AR = PC; updateUI(['AR']); pushTrace('T0: AR <- PC'); SC = 1; return; }
+  // T0: AR <- PC
+  if (SC === 0) {
+    AR = PC;
+    updateUI(['AR']);
+    pushTrace('T0: AR <- PC');
+    SC = 1;
+    return;
+  }
+
+  // T1: IR <- M[AR]; PC <- PC+1
   if (SC === 1) {
     const addr = AR & 0xFFF;
     IR = parseHexTok(MEM[addr] || '0000');
@@ -142,6 +186,8 @@ function microStep() {
     SC = 2;
     return;
   }
+
+  // T2: decode
   if (SC === 2) {
     const opcodeTop = (IR & 0xF000) >> 12;
     const addr = IR & 0x0FFF;
@@ -150,19 +196,24 @@ function microStep() {
     return;
   }
 
-  // execute-phase
+  // execute-phase (SC >= 3)
   const opcodeTop = (IR & 0xF000) >> 12;
-  const addr = IR & 0x0FFF;
+  const addrField = IR & 0x0FFF;
 
-  if (opcodeTop !== 0x7) { // memory-reference
-    if (SC === 3) { AR = addr; updateUI(['AR']); pushTrace('T3: AR <- address(IR)'); SC = 4; return; }
+  if (opcodeTop !== 0x7) {
+    // memory-reference instructions
+    if (SC === 3) {
+      AR = addrField;
+      updateUI(['AR']);
+      pushTrace('T3: AR <- address(IR)');
+      SC = 4;
+      return;
+    }
     if (SC === 4) {
       const opName = memOpMap[opcodeTop] || 'UNK';
 
-      // highlight accessed memory row (only first 256 rows are rendered)
-      document.querySelectorAll('#memtable tr').forEach(r => r.classList.remove('highlight'));
-      const memRow = document.querySelector(`#memtable tr[data-addr="${AR}"]`);
-      if (memRow) memRow.classList.add('highlight');
+      // highlight accessed memory (only if in rendered range)
+      highlightMemory(AR, AR);
 
       if (opName === 'STA') {
         MEM[AR] = hex4(AC);
@@ -183,6 +234,7 @@ function microStep() {
         updateUI(['PC']);
         SC = 0; profiler.instr++; return;
       } else {
+        // read for AND/ADD/LDA/ISZ
         DR = parseHexTok(MEM[AR] || '0000');
         profiler.reads++;
         updateUI(['DR']);
@@ -222,10 +274,12 @@ function microStep() {
       }
       SC = 0; profiler.instr++; return;
     }
-  } else { // register-reference
+  } else {
+    // register-reference instructions
     if (SC === 3) {
       const full = IR & 0xFFFF;
       let changed = [];
+
       if (regRefMap[full]) {
         const name = regRefMap[full];
         pushTrace(`T3: Register-ref ${name} executed`);
@@ -244,7 +298,7 @@ function microStep() {
           case 'HLT': halted = true; pushTrace('HLT executed — machine halted'); changed.push('IR'); break;
         }
       } else {
-        // bitwise mapping fallback (lower 12 bits)
+        // bitwise mapping (lower 12 bits)
         const b = [];
         for (let i = 0; i < 12; i++) b.push(((IR >> (11 - i)) & 1) === 1);
         const CLA = b[0], CLE = b[1], CMA = b[2], CME = b[3], CIR = b[4], CIL = b[5], INC = b[6], SPA = b[7], SNA = b[8], SZA = b[9], SZE = b[10], HLT = b[11];
@@ -261,6 +315,7 @@ function microStep() {
         if (SZE && (E === 0)) { PC = (PC + 1) & 0xFFF; changed.push('PC'); }
         if (HLT) { halted = true; changed.push('IR'); pushTrace('HLT executed via bit'); }
       }
+
       updateUI(changed);
       SC = 0; profiler.instr++;
       return;
@@ -268,7 +323,7 @@ function microStep() {
   }
 }
 
-// -------------------- Controls --------------------
+// -------------------- convenience ops: step instruction / run / halt --------------------
 function stepMicroCycle() { microStep(); updateUI(); }
 document.getElementById('btnStep').addEventListener('click', () => { if (halted) pushTrace('Machine halted.'); else stepMicroCycle(); });
 
@@ -289,32 +344,43 @@ document.getElementById('btnInst').addEventListener('click', nextInstruction);
 
 document.getElementById('btnRun').addEventListener('click', () => {
   if (runTimer) return;
-  const speed = parseInt(document.getElementById('speed').value, 10);
+  const speed = Math.max(10, parseInt(document.getElementById('speed').value, 10) || 400);
   runTimer = setInterval(() => {
     if (halted) { clearInterval(runTimer); runTimer = null; pushTrace('Stopped (halted)'); return; }
-    microStep(); updateUI();
+    microStep();
+    updateUI();
   }, speed);
 });
-document.getElementById('btnHalt').addEventListener('click', () => { halted = true; if (runTimer) { clearInterval(runTimer); runTimer = null; } pushTrace('Execution halted'); updateUI(); });
+
+document.getElementById('btnHalt').addEventListener('click', () => {
+  halted = true;
+  if (runTimer) { clearInterval(runTimer); runTimer = null; }
+  pushTrace('Execution halted by user.');
+  updateUI();
+});
 
 document.getElementById('btnReset').addEventListener('click', () => {
-  MEM = new Array(MEM_SIZE).fill('0000'); PC = AR = IR = AC = DR = E = 0; SC = 0; halted = false;
+  MEM = new Array(MEM_SIZE).fill('0000');
+  PC = AR = IR = AC = DR = E = 0; SC = 0; halted = false;
   profiler = { cycles: 0, instr: 0, reads: 0, writes: 0 };
-  updateUI(['PC','AR','IR','AC','DR']); pushTrace('Simulator reset');
+  updateUI(['PC','AR','IR','AC','DR']);
+  pushTrace('Simulator reset');
 });
 
 // -------------------- CLI (single robust handler) --------------------
 document.getElementById('cliBtn').addEventListener('click', () => {
-  const raw = document.getElementById('cliInput').value || '';
+  const raw = (document.getElementById('cliInput').value || '').trim();
+  const out = document.getElementById('cliOutput');
+  if (!out) return;
+  if (!raw) { out.textContent = ''; return; }
+
   const cmd = raw.trim();
   const lower = cmd.toLowerCase();
-  const out = document.getElementById('cliOutput');
-
-  if (!cmd) { out.textContent = ''; return; }
+  const parts = cmd.split(/\s+/);
 
   // show <reg>
   if (/^show\s+(ac|pc|ir|ar|dr|e)$/i.test(cmd)) {
-    const reg = cmd.split(/\s+/)[1].toUpperCase();
+    const reg = parts[1].toUpperCase();
     let val;
     switch (reg) {
       case 'AC': val = hex4(AC); break;
@@ -328,32 +394,33 @@ document.getElementById('cliBtn').addEventListener('click', () => {
     return;
   }
 
-  // show mem <hex> [count]
+  // show mem <hex-address> [count]
   if (/^show\s+mem/i.test(lower)) {
-    const parts = cmd.split(/\s+/);
     if (!parts[2]) { out.textContent = 'Usage: show mem <hex-address> [count]'; return; }
     const start = parseInt(parts[2], 16);
-    if (isNaN(start)) { out.textContent = 'Invalid hex address'; return; }
-    const count = parts[3] ? parseInt(parts[3], 10) : 1;
+    if (isNaN(start) || start < 0 || start >= MEM_SIZE) { out.textContent = 'Invalid hex address'; return; }
+    let count = 1;
+    if (parts[3]) {
+      // count is decimal by default
+      const c = parseInt(parts[3], 10);
+      count = (!isNaN(c) && c > 0) ? c : 1;
+    }
     const end = Math.min(start + count - 1, MEM_SIZE - 1);
 
-    // highlight and display
+    // highlight rendered rows and show text
     highlightMemory(start, end);
 
     let text = '';
-    for (let i = start; i <= end; i++) {
-      text += `${hex3(i)}: ${ (MEM[i] || '0000') }\n`;
-    }
+    for (let i = start; i <= end; i++) text += `${hex3(i)}: ${MEM[i] || '0000'}\n`;
     out.textContent = text;
     return;
   }
 
   // show all
   if (lower === 'show all') {
-    let text =
+    out.textContent =
       `PC = ${hex3(PC)}\nAR = ${hex3(AR)}\nIR = ${hex4(IR)}\nAC = ${hex4(AC)}\nDR = ${hex4(DR)}\nE  = ${E}\n\n` +
       `Cycles = ${profiler.cycles}\nInstructions = ${profiler.instr}\nReads = ${profiler.reads}\nWrites = ${profiler.writes}\nCPI = ${profiler.instr ? (profiler.cycles / profiler.instr).toFixed(2) : '0.00'}`;
-    out.textContent = text;
     return;
   }
 
@@ -364,10 +431,17 @@ document.getElementById('cliBtn').addEventListener('click', () => {
     return;
   }
 
+  // run/step/reset via CLI
+  if (lower === 'run') { document.getElementById('btnRun').click(); out.textContent = 'Running (via CLI)'; return; }
+  if (lower === 'step') { document.getElementById('btnStep').click(); out.textContent = 'Step (microcycle)'; return; }
+  if (lower === 'next') { document.getElementById('btnInst').click(); out.textContent = 'Next instruction'; return; }
+  if (lower === 'halt') { document.getElementById('btnHalt').click(); out.textContent = 'Halted'; return; }
+  if (lower === 'reset') { document.getElementById('btnReset').click(); out.textContent = 'Reset'; return; }
+
   out.textContent = 'Unknown command';
 });
 
-// -------------------- Initial Render --------------------
+// -------------------- initial render --------------------
 updateUI();
 renderMemTable();
 renderInstrTable();
