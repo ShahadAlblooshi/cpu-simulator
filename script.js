@@ -147,34 +147,61 @@ document.getElementById('cliBtn').addEventListener('click', () => {
   // ============================
   // SHOW ALL (registers + profiler)
   // ============================
-  if(cmd === "show all"){
-      out.textContent =
-        `PC = ${hex4(PC)}\n` +
-        `AR = ${hex4(AR)}\n` +
-        `IR = ${hex4(IR)}\n` +
-        `AC = ${hex4(AC)}\n` +
-        `DR = ${hex4(DR)}\n` +
-        `E  = ${E}\n\n` +
-        `Cycles = ${profiler.cycles}\n` +
-        `Instr  = ${profiler.instr}\n` +
-        `Reads  = ${profiler.reads}\n` +
-        `Writes = ${profiler.writes}\n` +
-        `CPI    = ${profiler.cpi}`;
-      return;
-  }
+ if (cmd.startsWith("show ")) {
+    let parts = cmd.split(" ");
 
-  // ============================
-  // SHOW PROFILER
-  // ============================
-  if(cmd === "show profiler"){
-      out.textContent =
-        `Cycles = ${profiler.cycles}\n` +
-        `Instructions = ${profiler.instr}\n` +
-        `Reads = ${profiler.reads}\n` +
-        `Writes = ${profiler.writes}\n` +
-        `CPI = ${profiler.cpi}`;
-      return;
-  }
+    // ---- show AC / show PC / show IR / show MAR / show MBR ----
+    if (parts.length === 2) {
+        let reg = parts[1].toUpperCase();
+
+        if (["AC","PC","IR","MAR","MBR","OUT","IN"].includes(reg)) {
+            log(`🔍 ${reg} = ${registers[reg]}`);
+            return;
+        }
+    }
+
+    // ===== show mem ADDRESS [COUNT] =====
+    if (parts.length >= 3 && parts[1] === "mem") {
+        let address = parseInt(parts[2], 16);
+        let count = parts[3] ? parseInt(parts[3]) : 1;
+
+        if (isNaN(address)) {
+            log("❌ Invalid hex address.");
+            return;
+        }
+
+        highlightMemory(address); // You already have this function
+
+        log(`📘 Memory from ${parts[2].toUpperCase()} for ${count} cell(s):`);
+        for (let i = 0; i < count; i++) {
+            let addr = (address + i) & 0xFFF;
+            log(`${addr.toString(16).padStart(3,"0").toUpperCase()}: ${memory[addr].toUpperCase()}`);
+        }
+        return;
+    }
+
+    // ===== show all =====
+    if (cmd === "show all") {
+        log("📙 All Registers:");
+        Object.keys(registers).forEach(r => {
+            log(`${r}: ${registers[r]}`);
+        });
+
+        log("\n📘 Full Memory Dump:");
+        for (let i = 0; i < 4096; i++) {
+            log(`${i.toString(16).padStart(3,"0").toUpperCase()}: ${memory[i]}`);
+        }
+        return;
+    }
+
+    // ===== show profiler =====
+    if (cmd === "show profiler") {
+        log("📊 Profiler:");
+        log(`Total cycles: ${profiler.cycles}`);
+        log(`Instructions executed: ${profiler.instructions}`);
+        return;
+    }
+}
 
   // UNKNOWN COMMAND
   out.textContent = "Unknown command";
