@@ -201,13 +201,16 @@ function microStep() {
 
   if (opcodeTop !== 0x7) {
     // memory-reference instructions
-    if (SC === 3) {
-      AR = addrField;
-      updateUI(['AR']);
-      pushTrace('T3: AR <- address(IR)');
-      SC = 4;
-      return;
+   if(SC===3) {
+    if(memOpMap[opcodeTop] !== 'STA') {
+        DR=parseHexTok(MEM[effAddr]||'0000');
+        profiler.reads++;
+        updateUI(['DR']);
     }
+    SC=4;
+    return;
+}
+
     if (SC === 4) {
       const opName = memOpMap[opcodeTop] || 'UNK';
 
