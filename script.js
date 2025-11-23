@@ -1,6 +1,5 @@
 // script.js
-// Full Mano-style CPU simulator - complete file
-// Drop-in replacement for your existing script.js
+// Full Mano-style CPU simulator - complete file with indirect addressing fix
 
 // -------------------- Machine state --------------------
 const MEM_SIZE = 1 << 12; // 4096 words (12-bit addresses)
@@ -234,11 +233,21 @@ function microStep() {
         updateUI(['PC']);
         SC = 0; profiler.instr++; return;
       } else {
-        // read for AND/ADD/LDA/ISZ
-        DR = parseHexTok(MEM[AR] || '0000');
+        // memory read for AND/ADD/LDA/ISZ with indirect support
+        const indirect = (IR & 0x0800) !== 0;
+        let effectiveAddr = AR;
+
+        if (indirect) {
+          // extra read for pointer
+          effectiveAddr = parseHexTok(MEM[AR] || '0000');
+          profiler.reads++;
+          pushTrace(`T4a: Indirect addressing: AR points to 0x${hex3(effectiveAddr)}`);
+        }
+
+        DR = parseHexTok(MEM[effectiveAddr] || '0000');
         profiler.reads++;
         updateUI(['DR']);
-        pushTrace(`T4: DR <- M[AR] (0x${hex4(DR)})`);
+        pushTrace(`T4b: DR <- M[0x${hex3(effectiveAddr)}] (0x${hex4(DR)})`);
         SC = 5;
         return;
       }
@@ -322,6 +331,8 @@ function microStep() {
     }
   }
 }
+
+
 
 // -------------------- convenience ops: step instruction / run / halt --------------------
 function stepMicroCycle() { microStep(); updateUI(); }
